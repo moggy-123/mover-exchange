@@ -49,6 +49,7 @@ export default function Signup() {
         fleet_size: parseInt(form.fleetSize) || 0,
         staff_count: parseInt(form.staffCount) || 0,
         memberships: form.memberships ? form.memberships.split(',').map(s => s.trim()) : [],
+        contact_email: form.email,
       })
       .select()
       .single()
