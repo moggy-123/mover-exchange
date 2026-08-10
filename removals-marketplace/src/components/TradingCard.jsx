@@ -57,7 +57,7 @@ export default function TradingCard({ company }) {
         </div>
         <div className="tt-stat-row">
           <span className="tt-label">Warehouse</span>
-          <span className="tt-value">{company.warehouse_sqft ? `${company.warehouse_sqft} sqft` : '–'}</span>
+          <span className="tt-value">{company.warehouse_sqft ? `${company.warehouse_sqft} sqft` : 'None'}</span>
         </div>
         <div className="tt-stat-row">
           <span className="tt-label">Rating</span>
