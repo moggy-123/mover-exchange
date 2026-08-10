@@ -8,6 +8,8 @@ import Listings from './pages/Listings'
 import MyListings from './pages/MyListings'
 import Profile from './pages/Profile'
 
+const APP_VERSION = 4 // bump this every time I give you a new file to paste
+
 function Topbar() {
   const { session, company } = useAuth()
   return (
@@ -69,6 +71,13 @@ export default function App() {
           <Route path="/my-listings" element={<RequireAuth><MyListings /></RequireAuth>} />
           <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
         </Routes>
+        <div style={{
+          position: 'fixed', bottom: 8, right: 12,
+          fontSize: 11, color: 'var(--slate)', opacity: 0.6,
+          fontFamily: 'monospace', pointerEvents: 'none',
+        }}>
+          Build {APP_VERSION}
+        </div>
       </AuthProvider>
     </BrowserRouter>
   )
