@@ -19,7 +19,7 @@ export default function Listings() {
     setLoading(true)
     const { data } = await supabase
       .from('listings')
-      .select('*, companies(name, region, verified, rating_avg, rating_count)')
+      .select('*, companies(name, region, verified, rating_avg, rating_count, contact_email)')
       .eq('status', 'open')
       .order('date_from', { ascending: true })
     setListings(data || [])
@@ -61,16 +61,34 @@ export default function Listings() {
     loadListings()
   }
 
-  async function respond(listingId) {
+  async function respond(listing) {
     if (!company) return
     const message = prompt('Message to the poster (optional):') || ''
     const { error } = await supabase.from('listing_responses').insert({
-      listing_id: listingId,
+      listing_id: listing.id,
       responding_company_id: company.id,
       message,
     })
-    if (error) alert(error.message)
-    else alert('Response sent — the poster will be in touch if they accept.')
+    if (error) { alert(error.message); return }
+
+    alert('Response sent — the poster will be in touch if they accept.')
+
+    const posterEmail = listing.companies?.contact_email
+    if (posterEmail) {
+      try {
+        await fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: posterEmail,
+            subject: 'New response to your listing — Mover-Exchange',
+            message: `${company.name} responded to your listing on Mover-Exchange. Log in to your "My Listings" page to view it and accept or decline.`,
+          }),
+        })
+      } catch (err) {
+        console.error('Notification failed to send:', err)
+      }
+    }
   }
 
   return (
@@ -142,14 +160,4 @@ export default function Listings() {
           </div>
           <p style={{ margin: '8px 0', fontSize: 14 }}>
             <strong>{l.type === 'staff' ? `${l.detail?.staff_needed || 1} staff` : `${l.detail?.vehicle_type || 'Vehicle'}${l.detail?.with_driver ? ' (with driver)' : ''}`}</strong>
-            {' · '}{l.location}{' · '}{l.date_from}{l.date_to ? ` to ${l.date_to}` : ''}
-            {l.rate ? ` · £${l.rate}/day` : ''}
-          </p>
-          {company && l.company_id !== company.id && (
-            <button onClick={() => respond(l.id)}>Respond</button>
-          )}
-        </div>
-      ))}
-    </div>
-  )
-}
+            {' · '}{l.location}{' ·
