@@ -6,6 +6,7 @@ import Signup from './pages/Signup'
 import Dashboard from './pages/Dashboard'
 import Listings from './pages/Listings'
 import MyListings from './pages/MyListings'
+import Profile from './pages/Profile'
 
 function Topbar() {
   const { session, company } = useAuth()
@@ -18,7 +19,7 @@ function Topbar() {
             <Link to="/dashboard">Members</Link>
             <Link to="/listings">Listings</Link>
             <Link to="/my-listings">My Listings</Link>
-            {company && <span style={{ marginLeft: 20, color: 'var(--ice)', fontSize: 14 }}>{company.name}</span>}
+            {company && <Link to="/profile" style={{ marginLeft: 20, color: 'var(--ice)', fontSize: 14 }}>{company.name}</Link>}
             <a href="#" onClick={(e) => { e.preventDefault(); supabase.auth.signOut() }} style={{ marginLeft: 20 }}>Log out</a>
           </>
         ) : (
@@ -66,6 +67,7 @@ export default function App() {
           <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
           <Route path="/listings" element={<RequireAuth><Listings /></RequireAuth>} />
           <Route path="/my-listings" element={<RequireAuth><MyListings /></RequireAuth>} />
+          <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
