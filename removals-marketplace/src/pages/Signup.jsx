@@ -14,6 +14,7 @@ export default function Signup() {
     email: '', password: '', yourName: '',
     companyName: '', region: [], yearsTrading: '',
     fleetSize: '', staffCount: '', memberships: '',
+    hasWarehouse: false, warehouseSqft: '',
   })
 
   function update(field, value) {
@@ -50,6 +51,7 @@ export default function Signup() {
         staff_count: parseInt(form.staffCount) || 0,
         memberships: form.memberships ? form.memberships.split(',').map(s => s.trim()) : [],
         contact_email: form.email,
+        warehouse_sqft: form.hasWarehouse ? (parseInt(form.warehouseSqft) || null) : null,
       })
       .select()
       .single()
@@ -115,6 +117,23 @@ export default function Signup() {
 
             <label>Staff count</label>
             <input type="number" min="0" value={form.staffCount} onChange={e => update('staffCount', e.target.value)} />
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <input
+                type="checkbox"
+                style={{ width: 'auto' }}
+                checked={form.hasWarehouse}
+                onChange={e => update('hasWarehouse', e.target.checked)}
+              />
+              We have warehouse or storage space
+            </label>
+
+            {form.hasWarehouse && (
+              <>
+                <label>Warehouse size (sq ft)</label>
+                <input type="number" min="0" value={form.warehouseSqft} onChange={e => update('warehouseSqft', e.target.value)} />
+              </>
+            )}
 
             <label>Memberships (comma separated, e.g. BAR, RHA)</label>
             <input value={form.memberships} onChange={e => update('memberships', e.target.value)} />
