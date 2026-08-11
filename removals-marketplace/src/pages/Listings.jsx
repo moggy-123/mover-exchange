@@ -144,4 +144,62 @@ export default function Listings() {
 
           <label>Direction</label>
           <select value={form.direction} onChange={e => update('direction', e.target.value)}>
-            <option value="request">I need this
+            <option value="request">I need this (request)</option>
+            <option value="offer">I have spare capacity (offer)</option>
+          </select>
+
+          <label>Date from</label>
+          <input required type="date" value={form.date_from} onChange={e => update('date_from', e.target.value)} />
+          <label>Date to (optional, for multi-day)</label>
+          <input type="date" value={form.date_to} onChange={e => update('date_to', e.target.value)} />
+
+          <label>Region</label>
+          <select required value={form.region} onChange={e => update('region', e.target.value)}>
+            <option value="">Select a region…</option>
+            {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+
+          <label>Town / postcode (extra detail)</label>
+          <input required placeholder="e.g. Bristol, BS1" value={form.location} onChange={e => update('location', e.target.value)} />
+
+          {form.type === 'staff' ? (
+            <>
+              <label>Staff needed</label>
+              <input type="number" min="1" value={form.staff_needed} onChange={e => update('staff_needed', e.target.value)} />
+            </>
+          ) : (
+            <>
+              <label>Vehicle type</label>
+              <input placeholder="e.g. Luton, 7.5t" value={form.vehicle_type} onChange={e => update('vehicle_type', e.target.value)} />
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input type="checkbox" style={{ width: 'auto' }} checked={form.with_driver} onChange={e => update('with_driver', e.target.checked)} />
+                With driver
+              </label>
+            </>
+          )}
+
+          <label>Rate (£/day, optional)</label>
+          <input type="number" min="0" value={form.rate} onChange={e => update('rate', e.target.value)} />
+
+          {error && <p style={{ color: 'crimson' }}>{error}</p>}
+          <button type="submit" disabled={saving}>{saving ? 'Posting…' : 'Post listing'}</button>
+        </form>
+      )}
+
+      {loading && <p>Loading…</p>}
+      {!loading && listings.length === 0 && (
+        <div className="empty-state">No open listings right now. Be the first to post one.</div>
+      )}
+
+      {listings.map(l => (
+        <div key={l.id} className="card">
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <div>
+              <strong>{l.companies?.name}</strong>
+              {l.companies?.verified && <span className="badge verified" style={{ marginLeft: 6 }}>✓</span>}
+            </div>
+            <span className="status-pill open">{l.direction === 'request' ? 'Needs help' : 'Spare capacity'}</span>
+          </div>
+          <p style={{ margin: '8px 0', fontSize: 14 }}>
+            <strong>{l.type === 'staff' ? `${l.detail?.staff_needed || 1} staff` : `${l.detail?.vehicle_type || 'Vehicle'}${l.detail?.with_driver ? ' (with driver)' : ''}`}</strong>
+            {' ·
