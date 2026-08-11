@@ -33,30 +33,52 @@ a { color: var(--sky); text-decoration: none; }
 .container {
   max-width: 1080px;
   margin: 0 auto;
-  padding: 24px 20px 60px;
+  padding: 20px 16px 60px;
+}
+
+@media (max-width: 480px) {
+  .container { padding: 16px 12px 60px; }
+  h1 { font-size: 22px; }
 }
 
 .topbar {
   background: var(--navy);
   color: white;
-  padding: 14px 20px;
+  padding: 14px 16px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 8px 20px;
 }
 
 .topbar .brand {
   font-family: 'Poppins', sans-serif;
   font-weight: 600;
-  font-size: 18px;
+  font-size: 17px;
   color: white;
+  white-space: nowrap;
+}
+
+.topbar nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
 }
 
 .topbar nav a {
   color: var(--ice);
-  margin-left: 20px;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 500;
+  white-space: nowrap;
+}
+
+.topbar nav .company-name {
+  color: white;
+  font-weight: 600;
+  padding-left: 10px;
+  border-left: 1px solid rgba(255,255,255,0.25);
 }
 
 .card {
