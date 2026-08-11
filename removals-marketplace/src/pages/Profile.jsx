@@ -9,12 +9,12 @@ export default function Profile() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
-  const [uploading, setUploading] = useState(false)
+  const [uploading, setUploading] = useState(false) // false | 'logo' | 'photo'
 
   const [form, setForm] = useState({
     companyName: '', region: [], yearsTrading: '',
     fleetSize: '', staffCount: '', memberships: '',
-    hasWarehouse: false, warehouseSqft: '', contactEmail: '', logoUrl: '',
+    hasWarehouse: false, warehouseSqft: '', contactEmail: '', logoUrl: '', photoUrl: '',
   })
 
   useEffect(() => {
@@ -30,6 +30,7 @@ export default function Profile() {
         warehouseSqft: company.warehouse_sqft ?? '',
         contactEmail: company.contact_email || '',
         logoUrl: company.logo_url || '',
+        photoUrl: company.photo_url || '',
       })
     }
   }, [company])
@@ -47,15 +48,16 @@ export default function Profile() {
     setSaved(false)
   }
 
-  async function handleLogoUpload(e) {
+  async function handleImageUpload(e, kind) {
+    // kind is 'logo' or 'photo'
     const file = e.target.files?.[0]
     if (!file || !company) return
 
-    setUploading(true)
+    setUploading(kind)
     setError('')
 
     const ext = file.name.split('.').pop()
-    const path = `${company.id}/logo.${ext}`
+    const path = `${company.id}/${kind}.${ext}`
 
     const { error: uploadError } = await supabase.storage
       .from('company-logos')
@@ -73,16 +75,17 @@ export default function Profile() {
 
     // Cache-bust so the new image shows immediately instead of a stale cached one
     const freshUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`
+    const dbField = kind === 'logo' ? 'logo_url' : 'photo_url'
 
     const { error: updateError } = await supabase
       .from('companies')
-      .update({ logo_url: freshUrl })
+      .update({ [dbField]: freshUrl })
       .eq('id', company.id)
 
     setUploading(false)
     if (updateError) { setError(updateError.message); return }
 
-    update('logoUrl', freshUrl)
+    update(kind === 'logo' ? 'logoUrl' : 'photoUrl', freshUrl)
     refreshCompany()
   }
 
@@ -122,8 +125,8 @@ export default function Profile() {
       <p style={{ color: 'var(--slate)' }}>These details show up on your trading card for other members to see.</p>
 
       <form onSubmit={handleSubmit} className="card">
-        <label>Company logo</label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+        <label>Company logo (shown top-left on your card)</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
           <div style={{
             width: 72, height: 72, borderRadius: 10, background: 'var(--ice-tint)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
@@ -137,11 +140,34 @@ export default function Profile() {
             <input
               type="file"
               accept="image/*"
-              onChange={handleLogoUpload}
-              disabled={uploading}
+              onChange={e => handleImageUpload(e, 'logo')}
+              disabled={!!uploading}
               style={{ marginBottom: 0 }}
             />
-            {uploading && <p style={{ fontSize: 12, color: 'var(--slate)', margin: '4px 0 0' }}>Uploading…</p>}
+            {uploading === 'logo' && <p style={{ fontSize: 12, color: 'var(--slate)', margin: '4px 0 0' }}>Uploading…</p>}
+          </div>
+        </div>
+
+        <label>Company photo (main image on your card, e.g. your fleet)</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+          <div style={{
+            width: 110, height: 72, borderRadius: 10, background: 'var(--ice-tint)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+            border: '1px solid var(--line)', flexShrink: 0,
+          }}>
+            {form.photoUrl
+              ? <img src={form.photoUrl} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <span style={{ fontSize: 11, color: 'var(--slate)', textAlign: 'center' }}>No photo</span>}
+          </div>
+          <div>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={e => handleImageUpload(e, 'photo')}
+              disabled={!!uploading}
+              style={{ marginBottom: 0 }}
+            />
+            {uploading === 'photo' && <p style={{ fontSize: 12, color: 'var(--slate)', margin: '4px 0 0' }}>Uploading…</p>}
           </div>
         </div>
 
