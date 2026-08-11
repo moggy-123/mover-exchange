@@ -1,4 +1,4 @@
-// Simple van glyph used as a placeholder "photo" until companies upload a logo
+// Simple van glyph used as a placeholder "photo" until companies upload one
 function VanGlyph() {
   return (
     <svg viewBox="0 0 100 100" fill="none">
@@ -27,15 +27,17 @@ export default function TradingCard({ company }) {
   return (
     <div className="trading-card">
       <div className="tt-header">
-        <span className="tt-code">{codeFor(company.name)}</span>
+        {company.logo_url
+          ? <img src={company.logo_url} alt={`${company.name} logo`} style={{ height: 26, maxWidth: 120, objectFit: 'contain' }} />
+          : <span className="tt-code">{codeFor(company.name)}</span>}
         <span className={`tt-verified ${company.verified ? '' : 'pending'}`}>
           {company.verified ? '✓ VERIFIED' : 'UNVERIFIED'}
         </span>
       </div>
 
       <div className="tt-photo">
-        {company.logo_url
-          ? <img src={company.logo_url} alt={`${company.name} logo`} style={{ maxWidth: '80%', maxHeight: '80%', objectFit: 'contain' }} />
+        {company.photo_url
+          ? <img src={company.photo_url} alt={`${company.name} fleet`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           : <VanGlyph />}
       </div>
 
