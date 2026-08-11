@@ -1,4 +1,4 @@
-// Simple van glyph used as a placeholder "photo" until companies can upload a logo
+// Simple van glyph used as a placeholder "photo" until companies upload a logo
 function VanGlyph() {
   return (
     <svg viewBox="0 0 100 100" fill="none">
@@ -34,7 +34,9 @@ export default function TradingCard({ company }) {
       </div>
 
       <div className="tt-photo">
-        <VanGlyph />
+        {company.logo_url
+          ? <img src={company.logo_url} alt={`${company.name} logo`} style={{ maxWidth: '80%', maxHeight: '80%', objectFit: 'contain' }} />
+          : <VanGlyph />}
       </div>
 
       <div className="tt-title-band">
