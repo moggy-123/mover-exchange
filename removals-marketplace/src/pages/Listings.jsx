@@ -201,5 +201,6 @@ export default function Listings() {
             <span className="status-pill open">{l.direction === 'request' ? 'Needs help' : 'Spare capacity'}</span>
           </div>
           <p style={{ margin: '8px 0', fontSize: 14 }}>
-            <strong>{l.type === 'staff' ? `${l.detail?.staff_needed || 1} staff` : `${l.detail?.vehicle_type || 'Vehicle'}${l.detail?.with_driver ? ' (with driver)' : ''}`}</strong>
-            {' ·
+<strong>{l.type === 'staff' ? `${l.detail?.staff_needed || 1} staff` : `${l.detail?.vehicle_type || 'Vehicle'}${l.detail?.with_driver ? ' (with driver)' : ''}`}</strong>
+            {' · '}{l.region}{l.location ? `, ${l.location}` : ''}{' · '}{l.date_from}{l.date_to ? ` to ${l.date_to}` : ''}
+            {l.rate ? ` · £${l.rate}/day` : ''}
