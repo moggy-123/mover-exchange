@@ -30,7 +30,7 @@ export default function Dashboard() {
         <div className="empty-state">No companies yet — you're the first one here.</div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16, justifyItems: 'center' }}>
         {companies
           .filter(c => c.id !== company?.id)
           .map(c => <TradingCard key={c.id} company={c} />)}
