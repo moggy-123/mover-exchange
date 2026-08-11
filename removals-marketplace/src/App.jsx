@@ -8,7 +8,7 @@ import Listings from './pages/Listings'
 import MyListings from './pages/MyListings'
 import Profile from './pages/Profile'
 
-const APP_VERSION = 5
+const APP_VERSION = 6
 
 function Topbar() {
   const { session, company } = useAuth()
@@ -21,8 +21,8 @@ function Topbar() {
             <Link to="/dashboard">Members</Link>
             <Link to="/listings">Listings</Link>
             <Link to="/my-listings">My Listings</Link>
-            {company && <Link to="/profile" style={{ marginLeft: 20, color: 'var(--ice)', fontSize: 14 }}>{company.name}</Link>}
-            <a href="#" onClick={(e) => { e.preventDefault(); supabase.auth.signOut() }} style={{ marginLeft: 20 }}>Log out</a>
+            {company && <Link to="/profile" className="company-name">{company.name}</Link>}
+            <a href="#" onClick={(e) => { e.preventDefault(); supabase.auth.signOut() }}>Log out</a>
           </>
         ) : (
           <>
