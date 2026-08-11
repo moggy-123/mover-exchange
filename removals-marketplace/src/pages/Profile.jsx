@@ -15,6 +15,7 @@ export default function Profile() {
     companyName: '', region: [], yearsTrading: '',
     fleetSize: '', staffCount: '', memberships: '',
     hasWarehouse: false, warehouseSqft: '', contactEmail: '', logoUrl: '', photoUrl: '',
+    notifyStaff: true, notifyVehicle: true,
   })
 
   useEffect(() => {
@@ -31,6 +32,8 @@ export default function Profile() {
         contactEmail: company.contact_email || '',
         logoUrl: company.logo_url || '',
         photoUrl: company.photo_url || '',
+        notifyStaff: (company.notify_types || ['staff', 'vehicle']).includes('staff'),
+        notifyVehicle: (company.notify_types || ['staff', 'vehicle']).includes('vehicle'),
       })
     }
   }, [company])
@@ -105,6 +108,10 @@ export default function Profile() {
         memberships: form.memberships ? form.memberships.split(',').map(s => s.trim()).filter(Boolean) : [],
         warehouse_sqft: form.hasWarehouse ? (parseInt(form.warehouseSqft) || null) : null,
         contact_email: form.contactEmail,
+        notify_types: [
+          ...(form.notifyStaff ? ['staff'] : []),
+          ...(form.notifyVehicle ? ['vehicle'] : []),
+        ],
       })
       .eq('id', company.id)
 
@@ -223,6 +230,18 @@ export default function Profile() {
 
         <label>Contact email</label>
         <input type="email" value={form.contactEmail} onChange={e => update('contactEmail', e.target.value)} />
+
+        <label>Email me about new listings for:</label>
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 400, marginBottom: 6 }}>
+            <input type="checkbox" style={{ width: 'auto' }} checked={form.notifyStaff} onChange={e => update('notifyStaff', e.target.checked)} />
+            Staff requests/offers
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 400 }}>
+            <input type="checkbox" style={{ width: 'auto' }} checked={form.notifyVehicle} onChange={e => update('notifyVehicle', e.target.checked)} />
+            Vehicle requests/offers
+          </label>
+        </div>
 
         {error && <p style={{ color: 'crimson' }}>{error}</p>}
         {saved && <p style={{ color: 'var(--ok)' }}>Saved.</p>}
