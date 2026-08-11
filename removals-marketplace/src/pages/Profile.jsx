@@ -9,11 +9,12 @@ export default function Profile() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   const [form, setForm] = useState({
     companyName: '', region: [], yearsTrading: '',
     fleetSize: '', staffCount: '', memberships: '',
-    hasWarehouse: false, warehouseSqft: '', contactEmail: '',
+    hasWarehouse: false, warehouseSqft: '', contactEmail: '', logoUrl: '',
   })
 
   useEffect(() => {
@@ -28,6 +29,7 @@ export default function Profile() {
         hasWarehouse: !!company.warehouse_sqft,
         warehouseSqft: company.warehouse_sqft ?? '',
         contactEmail: company.contact_email || '',
+        logoUrl: company.logo_url || '',
       })
     }
   }, [company])
@@ -43,6 +45,45 @@ export default function Profile() {
       region: f.region.includes(r) ? f.region.filter(x => x !== r) : [...f.region, r]
     }))
     setSaved(false)
+  }
+
+  async function handleLogoUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file || !company) return
+
+    setUploading(true)
+    setError('')
+
+    const ext = file.name.split('.').pop()
+    const path = `${company.id}/logo.${ext}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('company-logos')
+      .upload(path, file, { upsert: true, cacheControl: '3600' })
+
+    if (uploadError) {
+      setUploading(false)
+      setError(uploadError.message)
+      return
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('company-logos')
+      .getPublicUrl(path)
+
+    // Cache-bust so the new image shows immediately instead of a stale cached one
+    const freshUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`
+
+    const { error: updateError } = await supabase
+      .from('companies')
+      .update({ logo_url: freshUrl })
+      .eq('id', company.id)
+
+    setUploading(false)
+    if (updateError) { setError(updateError.message); return }
+
+    update('logoUrl', freshUrl)
+    refreshCompany()
   }
 
   async function handleSubmit(e) {
@@ -81,6 +122,29 @@ export default function Profile() {
       <p style={{ color: 'var(--slate)' }}>These details show up on your trading card for other members to see.</p>
 
       <form onSubmit={handleSubmit} className="card">
+        <label>Company logo</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+          <div style={{
+            width: 72, height: 72, borderRadius: 10, background: 'var(--ice-tint)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+            border: '1px solid var(--line)', flexShrink: 0,
+          }}>
+            {form.logoUrl
+              ? <img src={form.logoUrl} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              : <span style={{ fontSize: 11, color: 'var(--slate)', textAlign: 'center' }}>No logo</span>}
+          </div>
+          <div>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleLogoUpload}
+              disabled={uploading}
+              style={{ marginBottom: 0 }}
+            />
+            {uploading && <p style={{ fontSize: 12, color: 'var(--slate)', margin: '4px 0 0' }}>Uploading…</p>}
+          </div>
+        </div>
+
         <label>Company name</label>
         <input required value={form.companyName} onChange={e => update('companyName', e.target.value)} />
 
