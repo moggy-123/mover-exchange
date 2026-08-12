@@ -7,8 +7,9 @@ import Dashboard from './pages/Dashboard'
 import Listings from './pages/Listings'
 import MyListings from './pages/MyListings'
 import Profile from './pages/Profile'
+import ResetPassword from './pages/ResetPassword'
 
-const APP_VERSION = 6
+const APP_VERSION = 7
 
 function Topbar() {
   const { session, company } = useAuth()
@@ -65,6 +66,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
           <Route path="/listings" element={<RequireAuth><Listings /></RequireAuth>} />
