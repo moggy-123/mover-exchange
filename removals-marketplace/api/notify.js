@@ -29,10 +29,9 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        // Resend's shared test sender — swap for your own verified domain
-        // later (e.g. notifications@mover-exchange.co.uk) once you've
-        // added and verified it in Resend.
-        from: 'Mover-Exchange <onboarding@resend.dev>',
+        // Sending from your verified domain — works for any recipient now,
+        // not just your own Resend account email.
+        from: 'Mover-Exchange <notifications@windscreenrepairsbristol.co.uk>',
         to: [to],
         subject,
         html: `<p>${message.replace(/\n/g, '<br>')}</p>`,
