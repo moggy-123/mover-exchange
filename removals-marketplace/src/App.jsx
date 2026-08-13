@@ -10,7 +10,7 @@ import MyListings from './pages/MyListings'
 import Profile from './pages/Profile'
 import ResetPassword from './pages/ResetPassword'
 
-const APP_VERSION = 9
+const APP_VERSION = 10
 
 function Topbar() {
   const { session, company } = useAuth()
@@ -73,23 +73,25 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Topbar />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
-          <Route path="/listings" element={<RequireAuth><Listings /></RequireAuth>} />
-          <Route path="/my-listings" element={<RequireAuth><MyListings /></RequireAuth>} />
-          <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
-        </Routes>
-        <div style={{
-          position: 'fixed', bottom: 8, right: 12,
-          fontSize: 11, color: 'var(--slate)', opacity: 0.6,
-          fontFamily: 'monospace', pointerEvents: 'none',
-        }}>
-          Build {APP_VERSION}
+        <div className="app-shell">
+          <Topbar />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+            <Route path="/listings" element={<RequireAuth><Listings /></RequireAuth>} />
+            <Route path="/my-listings" element={<RequireAuth><MyListings /></RequireAuth>} />
+            <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+          </Routes>
+          <div style={{
+            position: 'fixed', bottom: 8, right: 12,
+            fontSize: 11, color: 'var(--slate)', opacity: 0.6,
+            fontFamily: 'monospace', pointerEvents: 'none',
+          }}>
+            Build {APP_VERSION}
+          </div>
         </div>
       </AuthProvider>
     </BrowserRouter>
