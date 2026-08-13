@@ -1,4 +1,4 @@
-// Simple van glyph used as a placeholder "photo" until companies upload one
+// Simple van glyph used as a placeholder "photo" until companies can upload a logo
 function VanGlyph() {
   return (
     <svg viewBox="0 0 100 100" fill="none">
@@ -15,20 +15,35 @@ function VanGlyph() {
   )
 }
 
-// Turns a company name into a short "code" for the header, e.g. "R & J Removals" -> "RJ"
-function codeFor(name) {
-  if (!name) return '—'
-  const words = name.split(' ').map(w => w.trim()).filter(w => /[A-Za-z]/.test(w))
-  if (words.length === 0) return '—'
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase()
-  return (words[0][0] + words[1][0]).toUpperCase()
+// Maps a country name to its flag emoji — covers UK + common European markets
+// for now; easy to extend as the platform expands into new countries.
+const COUNTRY_FLAGS = {
+  'United Kingdom': '🇬🇧',
+  'Ireland': '🇮🇪',
+  'France': '🇫🇷',
+  'Germany': '🇩🇪',
+  'Spain': '🇪🇸',
+  'Italy': '🇮🇹',
+  'Netherlands': '🇳🇱',
+  'Belgium': '🇧🇪',
+  'Portugal': '🇵🇹',
+  'Poland': '🇵🇱',
+  'Switzerland': '🇨🇭',
+  'Austria': '🇦🇹',
+  'Denmark': '🇩🇰',
+  'Sweden': '🇸🇪',
+  'Norway': '🇳🇴',
+}
+
+function flagFor(country) {
+  return COUNTRY_FLAGS[country] || '🌍'
 }
 
 export default function TradingCard({ company }) {
   return (
     <div className="trading-card">
       <div className="tt-header">
-        <span className="tt-code">{codeFor(company.name)}</span>
+        <span className="tt-flag" title={company.country || 'United Kingdom'}>{flagFor(company.country)}</span>
         <span className={`tt-verified ${company.verified ? '' : 'pending'}`}>
           {company.verified ? '✓ VERIFIED' : 'UNVERIFIED'}
         </span>
