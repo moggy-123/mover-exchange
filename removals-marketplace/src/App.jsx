@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 import { supabase } from './lib/supabaseClient'
@@ -9,29 +10,36 @@ import MyListings from './pages/MyListings'
 import Profile from './pages/Profile'
 import ResetPassword from './pages/ResetPassword'
 
-const APP_VERSION = 7
+const APP_VERSION = 8
 
 function Topbar() {
   const { session, company } = useAuth()
+  const [menuOpen, setMenuOpen] = useState(false)
+
   return (
     <div className="topbar">
-      <Link to="/" className="brand">Mover-Exchange</Link>
-      <nav>
-        {session ? (
-          <>
-            <Link to="/dashboard">Members</Link>
-            <Link to="/listings">Listings</Link>
-            <Link to="/my-listings">My Listings</Link>
-            {company && <Link to="/profile" className="company-name">{company.name}</Link>}
-            <a href="#" onClick={(e) => { e.preventDefault(); supabase.auth.signOut() }}>Log out</a>
-          </>
-        ) : (
-          <>
-            <Link to="/login">Log in</Link>
-            <Link to="/signup">Join</Link>
-          </>
+      <div className="topbar-row">
+        <Link to="/" className="brand" onClick={() => setMenuOpen(false)}>Mover-Exchange</Link>
+        {session && (
+          <button className="menu-toggle" onClick={() => setMenuOpen(o => !o)} aria-label="Menu">
+            {menuOpen ? '✕' : '☰'}
+          </button>
         )}
-      </nav>
+      </div>
+      {session ? (
+        <nav className={menuOpen ? 'open' : ''}>
+          <Link to="/dashboard" onClick={() => setMenuOpen(false)}>Members</Link>
+          <Link to="/listings" onClick={() => setMenuOpen(false)}>Listings</Link>
+          <Link to="/my-listings" onClick={() => setMenuOpen(false)}>My Listings</Link>
+          {company && <Link to="/profile" className="company-name" onClick={() => setMenuOpen(false)}>{company.name}</Link>}
+          <a href="#" onClick={(e) => { e.preventDefault(); setMenuOpen(false); supabase.auth.signOut() }}>Log out</a>
+        </nav>
+      ) : (
+        <nav>
+          <Link to="/login">Log in</Link>
+          <Link to="/signup">Join</Link>
+        </nav>
+      )}
     </div>
   )
 }
