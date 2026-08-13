@@ -4,6 +4,95 @@ import { useAuth } from '../lib/AuthContext'
 
 const REGIONS = ['South West', 'South East', 'South Wales', 'Midlands', 'North West', 'North East', 'Scotland', 'Northern Ireland', 'London', 'East Anglia']
 
+function DepotsSection({ company }) {
+  const [depots, setDepots] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [adding, setAdding] = useState(false)
+  const [error, setError] = useState('')
+  const [newDepot, setNewDepot] = useState({ name: '', address: '', region: '', postcode: '' })
+
+  async function loadDepots() {
+    setLoading(true)
+    const { data } = await supabase
+      .from('depots')
+      .select('*')
+      .eq('company_id', company.id)
+      .order('created_at', { ascending: true })
+    setDepots(data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => { loadDepots() }, [company.id])
+
+  async function addDepot(e) {
+    e.preventDefault()
+    setError('')
+    if (!newDepot.address || !newDepot.region) { setError('Address and region are required.'); return }
+    setAdding(true)
+
+    const { error } = await supabase.from('depots').insert({
+      company_id: company.id,
+      name: newDepot.name || null,
+      address: newDepot.address,
+      region: newDepot.region,
+      postcode: newDepot.postcode || null,
+    })
+
+    setAdding(false)
+    if (error) { setError(error.message); return }
+
+    setNewDepot({ name: '', address: '', region: '', postcode: '' })
+    loadDepots()
+  }
+
+  async function removeDepot(id) {
+    const { error } = await supabase.from('depots').delete().eq('id', id)
+    if (error) { alert(error.message); return }
+    loadDepots()
+  }
+
+  return (
+    <div className="card">
+      <h3 style={{ marginBottom: 4 }}>Depots</h3>
+      <p style={{ color: 'var(--slate)', fontSize: 13.5, marginTop: 0, marginBottom: 14 }}>
+        Add every location you operate from — this helps other movers find capacity near them.
+      </p>
+
+      {loading && <p style={{ fontSize: 13, color: 'var(--slate)' }}>Loading…</p>}
+
+      {!loading && depots.map(d => (
+        <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderTop: '1px solid var(--line)', paddingTop: 10, marginTop: 10 }}>
+          <div>
+            <strong style={{ fontSize: 14 }}>{d.name || d.region}</strong>
+            <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--slate)' }}>{d.address}{d.postcode ? `, ${d.postcode}` : ''} · {d.region}</p>
+          </div>
+          <button className="secondary" onClick={() => removeDepot(d.id)} style={{ fontSize: 12, padding: '6px 10px' }}>Remove</button>
+        </div>
+      ))}
+
+      <form onSubmit={addDepot} style={{ marginTop: 18, paddingTop: 14, borderTop: depots.length ? '1px solid var(--line)' : 'none' }}>
+        <label>Depot name (optional, e.g. "Bristol depot")</label>
+        <input value={newDepot.name} onChange={e => setNewDepot(d => ({ ...d, name: e.target.value }))} />
+
+        <label>Address</label>
+        <input required value={newDepot.address} onChange={e => setNewDepot(d => ({ ...d, address: e.target.value }))} placeholder="e.g. Unit 4, Anywhere Trading Estate, Bristol" />
+
+        <label>Postcode</label>
+        <input value={newDepot.postcode} onChange={e => setNewDepot(d => ({ ...d, postcode: e.target.value }))} />
+
+        <label>Region</label>
+        <select required value={newDepot.region} onChange={e => setNewDepot(d => ({ ...d, region: e.target.value }))}>
+          <option value="">Select a region…</option>
+          {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+        </select>
+
+        {error && <p style={{ color: 'crimson', fontSize: 13 }}>{error}</p>}
+        <button type="submit" disabled={adding}>{adding ? 'Adding…' : '+ Add depot'}</button>
+      </form>
+    </div>
+  )
+}
+
 export default function Profile() {
   const { company, refreshCompany } = useAuth()
   const [saving, setSaving] = useState(false)
@@ -15,7 +104,7 @@ export default function Profile() {
     companyName: '', region: [], yearsTrading: '',
     fleetSize: '', staffCount: '', memberships: '',
     hasWarehouse: false, warehouseSqft: '', contactEmail: '', logoUrl: '', photoUrl: '',
-    notifyStaff: true, notifyVehicle: true,
+    notifyStaff: true, notifyVehicle: true, address: '',
   })
 
   useEffect(() => {
@@ -34,6 +123,7 @@ export default function Profile() {
         photoUrl: company.photo_url || '',
         notifyStaff: (company.notify_types || ['staff', 'vehicle']).includes('staff'),
         notifyVehicle: (company.notify_types || ['staff', 'vehicle']).includes('vehicle'),
+        address: company.address || '',
       })
     }
   }, [company])
@@ -112,6 +202,7 @@ export default function Profile() {
           ...(form.notifyStaff ? ['staff'] : []),
           ...(form.notifyVehicle ? ['vehicle'] : []),
         ],
+        address: form.address,
       })
       .eq('id', company.id)
 
@@ -181,6 +272,9 @@ export default function Profile() {
         <label>Company name</label>
         <input required value={form.companyName} onChange={e => update('companyName', e.target.value)} />
 
+        <label>Full address (HQ)</label>
+        <input value={form.address} onChange={e => update('address', e.target.value)} placeholder="e.g. 12 Anywhere Street, Bristol, BS1 1AA" />
+
         <label>Regions covered</label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
           {REGIONS.map(r => (
@@ -248,6 +342,8 @@ export default function Profile() {
 
         <button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button>
       </form>
+
+      <DepotsSection company={company} />
     </div>
   )
 }
