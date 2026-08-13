@@ -53,6 +53,10 @@ a { color: var(--sky); text-decoration: none; }
   background: var(--navy);
   color: white;
   padding: 12px 16px;
+  padding-top: calc(12px + env(safe-area-inset-top));
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .topbar-row {
@@ -327,10 +331,4 @@ label {
 }
 .status-pill.open { background: var(--ice-tint); color: var(--sky); }
 .status-pill.matched { background: #FFF3E0; color: var(--warn); }
-.status-pill.closed { background: #EEE; color: var(--slate); }
-
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--slate);
-}
+.status-pill.closed { background:
