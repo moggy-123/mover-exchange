@@ -16,10 +16,20 @@
 
 * { box-sizing: border-box; }
 
+html {
+  overscroll-behavior-y: none;
+}
+
 body {
   margin: 0;
-  background: var(--bg);
+  background: var(--navy);
   color: var(--ink);
+  overscroll-behavior-y: none;
+}
+
+.app-shell {
+  background: var(--bg);
+  min-height: 100vh;
 }
 
 h1, h2, h3 {
@@ -331,4 +341,10 @@ label {
 }
 .status-pill.open { background: var(--ice-tint); color: var(--sky); }
 .status-pill.matched { background: #FFF3E0; color: var(--warn); }
-.status-pill.closed { background:
+.status-pill.closed { background: #EEE; color: var(--slate); }
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--slate);
+}
