@@ -15,10 +15,11 @@ function VanGlyph() {
   )
 }
 
-// Turns a company name into a short "code" for the header, e.g. "Bristol Removals Co" -> "BR"
+// Turns a company name into a short "code" for the header, e.g. "R & J Removals" -> "RJ"
 function codeFor(name) {
   if (!name) return '—'
-  const words = name.split(' ').filter(Boolean)
+  const words = name.split(' ').map(w => w.trim()).filter(w => /[A-Za-z]/.test(w))
+  if (words.length === 0) return '—'
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase()
   return (words[0][0] + words[1][0]).toUpperCase()
 }
