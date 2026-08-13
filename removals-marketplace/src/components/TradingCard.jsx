@@ -43,7 +43,10 @@ export default function TradingCard({ company }) {
   return (
     <div className="trading-card">
       <div className="tt-header">
-        <span className="tt-flag" title={company.country || 'United Kingdom'}>{flagFor(company.country)}</span>
+        <span className="tt-country">
+          <span className="tt-flag">{flagFor(company.country)}</span>
+          <span className="tt-country-name">{company.country || 'United Kingdom'}</span>
+        </span>
         <span className={`tt-verified ${company.verified ? '' : 'pending'}`}>
           {company.verified ? '✓ VERIFIED' : 'UNVERIFIED'}
         </span>
