@@ -192,9 +192,21 @@ a { color: var(--sky); text-decoration: none; }
   padding: 10px 14px;
 }
 
+.tt-header .tt-country {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .tt-header .tt-flag {
-  font-size: 28px;
+  font-size: 22px;
   line-height: 1;
+}
+
+.tt-header .tt-country-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
 }
 
 .tt-header .tt-verified {
