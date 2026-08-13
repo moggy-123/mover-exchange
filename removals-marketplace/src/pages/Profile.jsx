@@ -2,9 +2,31 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../lib/AuthContext'
 
-const REGIONS = ['South West', 'South East', 'South Wales', 'Midlands', 'North West', 'North East', 'Scotland', 'Northern Ireland', 'London', 'East Anglia']
-
 const COUNTRIES = ['United Kingdom', 'Ireland', 'France', 'Germany', 'Spain', 'Italy', 'Netherlands', 'Belgium', 'Portugal', 'Poland', 'Switzerland', 'Austria', 'Denmark', 'Sweden', 'Norway']
+
+// Region options per country — used for both "regions covered" and depot regions,
+// so the list shown always matches the selected country.
+const REGIONS_BY_COUNTRY = {
+  'United Kingdom': ['South West', 'South East', 'South Wales', 'Midlands', 'North West', 'North East', 'Scotland', 'Northern Ireland', 'London', 'East Anglia'],
+  'Ireland': ['Leinster', 'Munster', 'Connacht', 'Ulster'],
+  'France': ['Île-de-France', 'Provence-Alpes-Côte d\'Azur', 'Auvergne-Rhône-Alpes', 'Nouvelle-Aquitaine', 'Occitanie', 'Hauts-de-France', 'Grand Est', 'Normandy', 'Brittany', 'Pays de la Loire'],
+  'Germany': ['Bavaria', 'North Rhine-Westphalia', 'Baden-Württemberg', 'Lower Saxony', 'Hesse', 'Saxony', 'Berlin', 'Rhineland-Palatinate', 'Schleswig-Holstein', 'Brandenburg'],
+  'Spain': ['Madrid', 'Catalonia', 'Andalusia', 'Valencia', 'Basque Country', 'Galicia', 'Castile and León', 'Canary Islands'],
+  'Italy': ['Lombardy', 'Lazio', 'Campania', 'Sicily', 'Veneto', 'Piedmont', 'Emilia-Romagna', 'Tuscany'],
+  'Netherlands': ['North Holland', 'South Holland', 'Utrecht', 'North Brabant', 'Gelderland', 'Overijssel'],
+  'Belgium': ['Flanders', 'Wallonia', 'Brussels-Capital'],
+  'Portugal': ['Lisbon', 'Porto', 'Algarve', 'Centro', 'Norte'],
+  'Poland': ['Masovian', 'Silesian', 'Lesser Poland', 'Greater Poland', 'Lower Silesian', 'Pomeranian'],
+  'Switzerland': ['Zurich', 'Geneva', 'Bern', 'Basel', 'Vaud', 'Ticino'],
+  'Austria': ['Vienna', 'Lower Austria', 'Upper Austria', 'Styria', 'Tyrol'],
+  'Denmark': ['Capital Region', 'Central Denmark', 'Southern Denmark', 'Zealand', 'North Denmark'],
+  'Sweden': ['Stockholm', 'Västra Götaland', 'Skåne', 'Uppsala'],
+  'Norway': ['Oslo', 'Viken', 'Vestland', 'Rogaland', 'Trøndelag'],
+}
+
+function regionsFor(country) {
+  return REGIONS_BY_COUNTRY[country] || REGIONS_BY_COUNTRY['United Kingdom']
+}
 
 function DepotsSection({ company }) {
   const [depots, setDepots] = useState([])
@@ -103,14 +125,14 @@ function DepotsSection({ company }) {
         <input required value={newDepot.postcode} onChange={e => updateNew('postcode', e.target.value)} />
 
         <label>Country</label>
-        <select value={newDepot.country} onChange={e => updateNew('country', e.target.value)}>
+        <select value={newDepot.country} onChange={e => setNewDepot(d => ({ ...d, country: e.target.value, region: '' }))}>
           {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
 
         <label>Region</label>
         <select required value={newDepot.region} onChange={e => updateNew('region', e.target.value)}>
           <option value="">Select a region…</option>
-          {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+          {regionsFor(newDepot.country).map(r => <option key={r} value={r}>{r}</option>)}
         </select>
 
         {error && <p style={{ color: 'crimson', fontSize: 13 }}>{error}</p>}
@@ -313,13 +335,13 @@ export default function Profile() {
         <input value={form.addressLine2} onChange={e => update('addressLine2', e.target.value)} placeholder="Address line 2 (optional)" />
         <input value={form.city} onChange={e => update('city', e.target.value)} placeholder="City / town" />
         <input value={form.postcode} onChange={e => update('postcode', e.target.value)} placeholder="Postcode" />
-        <select value={form.country} onChange={e => update('country', e.target.value)}>
+        <select value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value, region: [] }))}>
           {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
 
         <label>Regions covered</label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-          {REGIONS.map(r => (
+          {regionsFor(form.country).map(r => (
             <span
               key={r}
               onClick={() => toggleRegion(r)}
