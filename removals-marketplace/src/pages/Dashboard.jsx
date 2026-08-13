@@ -23,7 +23,7 @@ export default function Dashboard() {
   return (
     <div className="container">
       <h1>Member companies</h1>
-      <p style={{ color: 'var(--slate)' }}>Browse other movers on the exchange. Post a listing to request staff, a vehicle, or offer spare capacity.</p>
+      <p className="page-lead">Browse other movers on the exchange. Post a listing to request staff, a vehicle, or offer spare capacity.</p>
 
       {loading && <p>Loading…</p>}
       {!loading && companies.length === 0 && (
