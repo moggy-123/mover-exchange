@@ -36,7 +36,7 @@ export default function TradingCard({ company }) {
 
       <div className="tt-photo">
         {company.photo_url
-          ? <img src={company.photo_url} alt={`${company.name} fleet`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ? <img src={company.photo_url} alt={`${company.name} fleet`} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           : <VanGlyph />}
       </div>
 
