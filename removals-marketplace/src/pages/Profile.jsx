@@ -4,12 +4,16 @@ import { useAuth } from '../lib/AuthContext'
 
 const REGIONS = ['South West', 'South East', 'South Wales', 'Midlands', 'North West', 'North East', 'Scotland', 'Northern Ireland', 'London', 'East Anglia']
 
+const COUNTRIES = ['United Kingdom', 'Ireland', 'France', 'Germany', 'Spain', 'Italy', 'Netherlands', 'Belgium', 'Portugal', 'Poland', 'Switzerland', 'Austria', 'Denmark', 'Sweden', 'Norway']
+
 function DepotsSection({ company }) {
   const [depots, setDepots] = useState([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState('')
-  const [newDepot, setNewDepot] = useState({ name: '', address: '', region: '', postcode: '' })
+  const [newDepot, setNewDepot] = useState({
+    name: '', addressLine1: '', addressLine2: '', city: '', postcode: '', country: 'United Kingdom', region: '',
+  })
 
   async function loadDepots() {
     setLoading(true)
@@ -24,24 +28,34 @@ function DepotsSection({ company }) {
 
   useEffect(() => { loadDepots() }, [company.id])
 
+  function updateNew(field, value) {
+    setNewDepot(d => ({ ...d, [field]: value }))
+  }
+
   async function addDepot(e) {
     e.preventDefault()
     setError('')
-    if (!newDepot.address || !newDepot.region) { setError('Address and region are required.'); return }
+    if (!newDepot.addressLine1 || !newDepot.city || !newDepot.postcode || !newDepot.region) {
+      setError('Address line 1, city, postcode and region are required.')
+      return
+    }
     setAdding(true)
 
     const { error } = await supabase.from('depots').insert({
       company_id: company.id,
       name: newDepot.name || null,
-      address: newDepot.address,
+      address_line1: newDepot.addressLine1,
+      address_line2: newDepot.addressLine2 || null,
+      city: newDepot.city,
+      postcode: newDepot.postcode,
+      country: newDepot.country,
       region: newDepot.region,
-      postcode: newDepot.postcode || null,
     })
 
     setAdding(false)
     if (error) { setError(error.message); return }
 
-    setNewDepot({ name: '', address: '', region: '', postcode: '' })
+    setNewDepot({ name: '', addressLine1: '', addressLine2: '', city: '', postcode: '', country: 'United Kingdom', region: '' })
     loadDepots()
   }
 
@@ -64,7 +78,9 @@ function DepotsSection({ company }) {
         <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderTop: '1px solid var(--line)', paddingTop: 10, marginTop: 10 }}>
           <div>
             <strong style={{ fontSize: 14 }}>{d.name || d.region}</strong>
-            <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--slate)' }}>{d.address}{d.postcode ? `, ${d.postcode}` : ''} · {d.region}</p>
+            <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--slate)' }}>
+              {d.address_line1}{d.address_line2 ? `, ${d.address_line2}` : ''}, {d.city}, {d.postcode}, {d.country || 'United Kingdom'} · {d.region}
+            </p>
           </div>
           <button className="secondary" onClick={() => removeDepot(d.id)} style={{ fontSize: 12, padding: '6px 10px' }}>Remove</button>
         </div>
@@ -72,16 +88,27 @@ function DepotsSection({ company }) {
 
       <form onSubmit={addDepot} style={{ marginTop: 18, paddingTop: 14, borderTop: depots.length ? '1px solid var(--line)' : 'none' }}>
         <label>Depot name (optional, e.g. "Bristol depot")</label>
-        <input value={newDepot.name} onChange={e => setNewDepot(d => ({ ...d, name: e.target.value }))} />
+        <input value={newDepot.name} onChange={e => updateNew('name', e.target.value)} />
 
-        <label>Address</label>
-        <input required value={newDepot.address} onChange={e => setNewDepot(d => ({ ...d, address: e.target.value }))} placeholder="e.g. Unit 4, Anywhere Trading Estate, Bristol" />
+        <label>Address line 1</label>
+        <input required value={newDepot.addressLine1} onChange={e => updateNew('addressLine1', e.target.value)} placeholder="e.g. Unit 4, Anywhere Trading Estate" />
+
+        <label>Address line 2 (optional)</label>
+        <input value={newDepot.addressLine2} onChange={e => updateNew('addressLine2', e.target.value)} />
+
+        <label>City / town</label>
+        <input required value={newDepot.city} onChange={e => updateNew('city', e.target.value)} />
 
         <label>Postcode</label>
-        <input value={newDepot.postcode} onChange={e => setNewDepot(d => ({ ...d, postcode: e.target.value }))} />
+        <input required value={newDepot.postcode} onChange={e => updateNew('postcode', e.target.value)} />
+
+        <label>Country</label>
+        <select value={newDepot.country} onChange={e => updateNew('country', e.target.value)}>
+          {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
 
         <label>Region</label>
-        <select required value={newDepot.region} onChange={e => setNewDepot(d => ({ ...d, region: e.target.value }))}>
+        <select required value={newDepot.region} onChange={e => updateNew('region', e.target.value)}>
           <option value="">Select a region…</option>
           {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
@@ -104,7 +131,8 @@ export default function Profile() {
     companyName: '', region: [], yearsTrading: '',
     fleetSize: '', staffCount: '', memberships: '',
     hasWarehouse: false, warehouseSqft: '', contactEmail: '', logoUrl: '', photoUrl: '',
-    notifyStaff: true, notifyVehicle: true, address: '',
+    notifyStaff: true, notifyVehicle: true,
+    addressLine1: '', addressLine2: '', city: '', postcode: '', country: 'United Kingdom',
   })
 
   useEffect(() => {
@@ -123,7 +151,11 @@ export default function Profile() {
         photoUrl: company.photo_url || '',
         notifyStaff: (company.notify_types || ['staff', 'vehicle']).includes('staff'),
         notifyVehicle: (company.notify_types || ['staff', 'vehicle']).includes('vehicle'),
-        address: company.address || '',
+        addressLine1: company.address_line1 || '',
+        addressLine2: company.address_line2 || '',
+        city: company.city || '',
+        postcode: company.postcode || '',
+        country: company.country || 'United Kingdom',
       })
     }
   }, [company])
@@ -202,7 +234,11 @@ export default function Profile() {
           ...(form.notifyStaff ? ['staff'] : []),
           ...(form.notifyVehicle ? ['vehicle'] : []),
         ],
-        address: form.address,
+        address_line1: form.addressLine1,
+        address_line2: form.addressLine2 || null,
+        city: form.city,
+        postcode: form.postcode,
+        country: form.country,
       })
       .eq('id', company.id)
 
@@ -273,7 +309,13 @@ export default function Profile() {
         <input required value={form.companyName} onChange={e => update('companyName', e.target.value)} />
 
         <label>Full address (HQ)</label>
-        <input value={form.address} onChange={e => update('address', e.target.value)} placeholder="e.g. 12 Anywhere Street, Bristol, BS1 1AA" />
+        <input value={form.addressLine1} onChange={e => update('addressLine1', e.target.value)} placeholder="Address line 1" />
+        <input value={form.addressLine2} onChange={e => update('addressLine2', e.target.value)} placeholder="Address line 2 (optional)" />
+        <input value={form.city} onChange={e => update('city', e.target.value)} placeholder="City / town" />
+        <input value={form.postcode} onChange={e => update('postcode', e.target.value)} placeholder="Postcode" />
+        <select value={form.country} onChange={e => update('country', e.target.value)}>
+          {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
 
         <label>Regions covered</label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
