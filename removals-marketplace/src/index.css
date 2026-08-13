@@ -192,11 +192,9 @@ a { color: var(--sky); text-decoration: none; }
   padding: 10px 14px;
 }
 
-.tt-header .tt-code {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 700;
-  font-size: 20px;
-  color: white;
+.tt-header .tt-flag {
+  font-size: 28px;
+  line-height: 1;
 }
 
 .tt-header .tt-verified {
