@@ -41,6 +41,14 @@ a { color: var(--sky); text-decoration: none; }
   h1 { font-size: 22px; }
 }
 
+.page-lead {
+  color: var(--slate);
+  font-size: 15.5px;
+  line-height: 1.55;
+  max-width: 620px;
+  margin: 0 0 24px;
+}
+
 .topbar {
   background: var(--navy);
   color: white;
