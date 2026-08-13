@@ -10,7 +10,7 @@ import MyListings from './pages/MyListings'
 import Profile from './pages/Profile'
 import ResetPassword from './pages/ResetPassword'
 
-const APP_VERSION = 8
+const APP_VERSION = 9
 
 function Topbar() {
   const { session, company } = useAuth()
@@ -27,7 +27,7 @@ function Topbar() {
         )}
       </div>
       {session ? (
-        <nav className={menuOpen ? 'open' : ''}>
+        <nav className={`collapsible ${menuOpen ? 'open' : ''}`}>
           <Link to="/dashboard" onClick={() => setMenuOpen(false)}>Members</Link>
           <Link to="/listings" onClick={() => setMenuOpen(false)}>Listings</Link>
           <Link to="/my-listings" onClick={() => setMenuOpen(false)}>My Listings</Link>
@@ -62,6 +62,9 @@ function Home() {
         Verified profiles, short-notice cover, no more scrambling before a big job.
       </p>
       <Link to="/signup"><button>Join the exchange</button></Link>
+      <p style={{ marginTop: 16, fontSize: 14 }}>
+        Already have an account? <Link to="/login">Log in</Link>
+      </p>
     </div>
   )
 }
