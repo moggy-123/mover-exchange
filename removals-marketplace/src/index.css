@@ -141,11 +141,24 @@ a { color: var(--sky); text-decoration: none; }
 
 .trading-card {
   background: var(--paper);
-  border: 3px solid var(--paper);
-  border-radius: 16px;
+  border: 4px solid var(--navy);
+  border-radius: 18px;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(11,46,94,0.15), 0 0 0 1px var(--line);
+  box-shadow:
+    0 14px 30px rgba(11,46,94,0.38),
+    0 4px 10px rgba(11,46,94,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.6);
   max-width: 340px;
+  position: relative;
+}
+
+.trading-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
 }
 
 .tt-header {
