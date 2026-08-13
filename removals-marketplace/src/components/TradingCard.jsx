@@ -27,9 +27,7 @@ export default function TradingCard({ company }) {
   return (
     <div className="trading-card">
       <div className="tt-header">
-        {company.logo_url
-          ? <img src={company.logo_url} alt={`${company.name} logo`} style={{ height: 26, maxWidth: 120, objectFit: 'contain' }} />
-          : <span className="tt-code">{codeFor(company.name)}</span>}
+        <span className="tt-code">{codeFor(company.name)}</span>
         <span className={`tt-verified ${company.verified ? '' : 'pending'}`}>
           {company.verified ? '✓ VERIFIED' : 'UNVERIFIED'}
         </span>
