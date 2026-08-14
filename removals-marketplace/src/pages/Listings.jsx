@@ -2,7 +2,39 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../lib/AuthContext'
 
-const REGIONS = ['South West', 'South East', 'South Wales', 'Midlands', 'North West', 'North East', 'Scotland', 'Northern Ireland', 'London', 'East Anglia']
+const COUNTRIES = ['United Kingdom', 'Ireland', 'France', 'Germany', 'Spain', 'Italy', 'Netherlands', 'Belgium', 'Portugal', 'Poland', 'Switzerland', 'Austria', 'Denmark', 'Sweden', 'Norway']
+
+const REGIONS_BY_COUNTRY = {
+  'United Kingdom': ['South West', 'South East', 'South Wales', 'Midlands', 'North West', 'North East', 'Scotland', 'Northern Ireland', 'London', 'East Anglia'],
+  'Ireland': ['Leinster', 'Munster', 'Connacht', 'Ulster'],
+  'France': ['Île-de-France', 'Provence-Alpes-Côte d\'Azur', 'Auvergne-Rhône-Alpes', 'Nouvelle-Aquitaine', 'Occitanie', 'Hauts-de-France', 'Grand Est', 'Normandy', 'Brittany', 'Pays de la Loire'],
+  'Germany': ['Bavaria', 'North Rhine-Westphalia', 'Baden-Württemberg', 'Lower Saxony', 'Hesse', 'Saxony', 'Berlin', 'Rhineland-Palatinate', 'Schleswig-Holstein', 'Brandenburg'],
+  'Spain': ['Madrid', 'Catalonia', 'Andalusia', 'Valencia', 'Basque Country', 'Galicia', 'Castile and León', 'Canary Islands'],
+  'Italy': ['Lombardy', 'Lazio', 'Campania', 'Sicily', 'Veneto', 'Piedmont', 'Emilia-Romagna', 'Tuscany'],
+  'Netherlands': ['North Holland', 'South Holland', 'Utrecht', 'North Brabant', 'Gelderland', 'Overijssel'],
+  'Belgium': ['Flanders', 'Wallonia', 'Brussels-Capital'],
+  'Portugal': ['Lisbon', 'Porto', 'Algarve', 'Centro', 'Norte'],
+  'Poland': ['Masovian', 'Silesian', 'Lesser Poland', 'Greater Poland', 'Lower Silesian', 'Pomeranian'],
+  'Switzerland': ['Zurich', 'Geneva', 'Bern', 'Basel', 'Vaud', 'Ticino'],
+  'Austria': ['Vienna', 'Lower Austria', 'Upper Austria', 'Styria', 'Tyrol'],
+  'Denmark': ['Capital Region', 'Central Denmark', 'Southern Denmark', 'Zealand', 'North Denmark'],
+  'Sweden': ['Stockholm', 'Västra Götaland', 'Skåne', 'Uppsala'],
+  'Norway': ['Oslo', 'Viken', 'Vestland', 'Rogaland', 'Trøndelag'],
+}
+
+function regionsFor(country) {
+  return REGIONS_BY_COUNTRY[country] || REGIONS_BY_COUNTRY['United Kingdom']
+}
+
+const COUNTRY_FLAGS = {
+  'United Kingdom': '🇬🇧', 'Ireland': '🇮🇪', 'France': '🇫🇷', 'Germany': '🇩🇪', 'Spain': '🇪🇸',
+  'Italy': '🇮🇹', 'Netherlands': '🇳🇱', 'Belgium': '🇧🇪', 'Portugal': '🇵🇹', 'Poland': '🇵🇱',
+  'Switzerland': '🇨🇭', 'Austria': '🇦🇹', 'Denmark': '🇩🇰', 'Sweden': '🇸🇪', 'Norway': '🇳🇴',
+}
+
+function flagFor(country) {
+  return COUNTRY_FLAGS[country] || '🌍'
+}
 
 export default function Listings() {
   const { company } = useAuth()
@@ -14,7 +46,7 @@ export default function Listings() {
 
   const [form, setForm] = useState({
     type: 'staff', direction: 'request', date_from: '', date_to: '',
-    region: '', location: '', rate: '', staff_needed: '', vehicle_type: '', with_driver: false,
+    country: 'United Kingdom', region: '', town: '', postcode: '', rate: '', staff_needed: '', vehicle_type: '', with_driver: false,
   })
 
   async function loadListings() {
@@ -55,8 +87,8 @@ export default function Listings() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             to: c.contact_email,
-            subject: `New ${listing.type} listing in ${listing.region} — Mover-Exchange`,
-            message: `${company.name} just posted a ${listing.direction === 'request' ? 'request for' : 'offer of'} ${listing.type} in ${listing.region} (${listing.location}). Log in to Mover-Exchange to view and respond.`,
+            subject: `New ${listing.type} listing in ${listing.region}, ${listing.country} — Mover-Exchange`,
+            message: `${company.name} just posted a ${listing.direction === 'request' ? 'request for' : 'offer of'} ${listing.type} in ${listing.region}, ${listing.country} (${listing.location}). Log in to Mover-Exchange to view and respond.`,
           }),
         })
       } catch (err) {
@@ -81,8 +113,9 @@ export default function Listings() {
       direction: form.direction,
       date_from: form.date_from,
       date_to: form.date_to || null,
+      country: form.country,
       region: form.region,
-      location: form.location,
+      location: `${form.town}${form.postcode ? ', ' + form.postcode : ''}`,
       rate: form.rate ? parseFloat(form.rate) : null,
       detail,
     }).select().single()
@@ -91,7 +124,7 @@ export default function Listings() {
     if (error) { setError(error.message); return }
 
     setShowForm(false)
-    setForm({ type: 'staff', direction: 'request', date_from: '', date_to: '', region: '', location: '', rate: '', staff_needed: '', vehicle_type: '', with_driver: false })
+    setForm({ type: 'staff', direction: 'request', date_from: '', date_to: '', country: 'United Kingdom', region: '', town: '', postcode: '', rate: '', staff_needed: '', vehicle_type: '', with_driver: false })
     loadListings()
 
     if (inserted) notifyMatchingCompanies(inserted)
@@ -153,14 +186,25 @@ export default function Listings() {
           <label>Date to (optional, for multi-day)</label>
           <input type="date" value={form.date_to} onChange={e => update('date_to', e.target.value)} />
 
+          <label>Country</label>
+          <select value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value, region: '' }))}>
+            {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <p style={{ fontSize: 12.5, color: 'var(--slate)', marginTop: -6, marginBottom: 12 }}>
+            Not always your own country — e.g. pick France if the job needs help there.
+          </p>
+
           <label>Region</label>
           <select required value={form.region} onChange={e => update('region', e.target.value)}>
             <option value="">Select a region…</option>
-            {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+            {regionsFor(form.country).map(r => <option key={r} value={r}>{r}</option>)}
           </select>
 
-          <label>Town / postcode (extra detail)</label>
-          <input required placeholder="e.g. Bristol, BS1" value={form.location} onChange={e => update('location', e.target.value)} />
+          <label>Town / city</label>
+          <input required placeholder="e.g. Bristol" value={form.town} onChange={e => update('town', e.target.value)} />
+
+          <label>Postcode</label>
+          <input required placeholder="e.g. BS1 1AA" value={form.postcode} onChange={e => update('postcode', e.target.value)} />
 
           {form.type === 'staff' ? (
             <>
@@ -201,10 +245,10 @@ export default function Listings() {
             <span className="status-pill open">{l.direction === 'request' ? 'Needs help' : 'Spare capacity'}</span>
           </div>
           <p style={{ margin: '8px 0', fontSize: 14 }}>
-<strong>{l.type === 'staff' ? `${l.detail?.staff_needed || 1} staff` : `${l.detail?.vehicle_type || 'Vehicle'}${l.detail?.with_driver ? ' (with driver)' : ''}`}</strong>
-            {' · '}{l.region}{l.location ? `, ${l.location}` : ''}{' · '}{l.date_from}{l.date_to ? ` to ${l.date_to}` : ''}
+            <strong>{l.type === 'staff' ? `${l.detail?.staff_needed || 1} staff` : `${l.detail?.vehicle_type || 'Vehicle'}${l.detail?.with_driver ? ' (with driver)' : ''}`}</strong>
+            {' · '}{flagFor(l.country)} {l.region}{l.location ? `, ${l.location}` : ''}{' · '}{l.date_from}{l.date_to ? ` to ${l.date_to}` : ''}
             {l.rate ? ` · £${l.rate}/day` : ''}
-</p>
+          </p>
           {company && l.company_id !== company.id && (
             <button onClick={() => respond(l)}>Respond</button>
           )}
