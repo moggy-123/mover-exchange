@@ -4,6 +4,8 @@ import { useAuth } from '../lib/AuthContext'
 
 const COUNTRIES = ['United Kingdom', 'Ireland', 'France', 'Germany', 'Spain', 'Italy', 'Netherlands', 'Belgium', 'Portugal', 'Poland', 'Switzerland', 'Austria', 'Denmark', 'Sweden', 'Norway']
 
+// Region options per country — used for both "regions covered" and depot regions,
+// so the list shown always matches the selected country.
 const REGIONS_BY_COUNTRY = {
   'United Kingdom': ['South West', 'South East', 'South Wales', 'Midlands', 'North West', 'North East', 'Scotland', 'Northern Ireland', 'London', 'East Anglia'],
   'Ireland': ['Leinster', 'Munster', 'Connacht', 'Ulster'],
@@ -26,234 +28,386 @@ function regionsFor(country) {
   return REGIONS_BY_COUNTRY[country] || REGIONS_BY_COUNTRY['United Kingdom']
 }
 
-const COUNTRY_FLAGS = {
-  'United Kingdom': '🇬🇧', 'Ireland': '🇮🇪', 'France': '🇫🇷', 'Germany': '🇩🇪', 'Spain': '🇪🇸',
-  'Italy': '🇮🇹', 'Netherlands': '🇳🇱', 'Belgium': '🇧🇪', 'Portugal': '🇵🇹', 'Poland': '🇵🇱',
-  'Switzerland': '🇨🇭', 'Austria': '🇦🇹', 'Denmark': '🇩🇰', 'Sweden': '🇸🇪', 'Norway': '🇳🇴',
-}
-
-function flagFor(country) {
-  return COUNTRY_FLAGS[country] || '🌍'
-}
-
-export default function Listings() {
-  const { company } = useAuth()
-  const [listings, setListings] = useState([])
+function DepotsSection({ company }) {
+  const [depots, setDepots] = useState([])
   const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [adding, setAdding] = useState(false)
   const [error, setError] = useState('')
-
-  const [form, setForm] = useState({
-    type: 'staff', direction: 'request', date_from: '', date_to: '',
-    country: 'United Kingdom', region: '', town: '', postcode: '', rate: '', staff_needed: '', vehicle_type: '', with_driver: false,
+  const [newDepot, setNewDepot] = useState({
+    name: '', addressLine1: '', addressLine2: '', city: '', postcode: '', country: 'United Kingdom', region: '',
   })
 
-  async function loadListings() {
+  async function loadDepots() {
     setLoading(true)
     const { data } = await supabase
-      .from('listings')
-      .select('*, companies(name, region, verified, rating_avg, rating_count, contact_email)')
-      .eq('status', 'open')
-      .order('date_from', { ascending: true })
-    setListings(data || [])
+      .from('depots')
+      .select('*')
+      .eq('company_id', company.id)
+      .order('created_at', { ascending: true })
+    setDepots(data || [])
     setLoading(false)
   }
 
-  useEffect(() => { loadListings() }, [])
+  useEffect(() => { loadDepots() }, [company.id])
+
+  function updateNew(field, value) {
+    setNewDepot(d => ({ ...d, [field]: value }))
+  }
+
+  async function addDepot(e) {
+    e.preventDefault()
+    setError('')
+    if (!newDepot.addressLine1 || !newDepot.city || !newDepot.postcode || !newDepot.region) {
+      setError('Address line 1, city, postcode and region are required.')
+      return
+    }
+    setAdding(true)
+
+    const { error } = await supabase.from('depots').insert({
+      company_id: company.id,
+      name: newDepot.name || null,
+      address_line1: newDepot.addressLine1,
+      address_line2: newDepot.addressLine2 || null,
+      city: newDepot.city,
+      postcode: newDepot.postcode,
+      country: newDepot.country,
+      region: newDepot.region,
+    })
+
+    setAdding(false)
+    if (error) { setError(error.message); return }
+
+    setNewDepot({ name: '', addressLine1: '', addressLine2: '', city: '', postcode: '', country: 'United Kingdom', region: '' })
+    loadDepots()
+  }
+
+  async function removeDepot(id) {
+    const { error } = await supabase.from('depots').delete().eq('id', id)
+    if (error) { alert(error.message); return }
+    loadDepots()
+  }
+
+  return (
+    <div className="card">
+      <h3 style={{ marginBottom: 4 }}>Depots</h3>
+      <p style={{ color: 'var(--slate)', fontSize: 13.5, marginTop: 0, marginBottom: 14 }}>
+        Add every location you operate from — this helps other movers find capacity near them.
+      </p>
+
+      {loading && <p style={{ fontSize: 13, color: 'var(--slate)' }}>Loading…</p>}
+
+      {!loading && depots.map(d => (
+        <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderTop: '1px solid var(--line)', paddingTop: 10, marginTop: 10 }}>
+          <div>
+            <strong style={{ fontSize: 14 }}>{d.name || d.region}</strong>
+            <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--slate)' }}>
+              {d.address_line1}{d.address_line2 ? `, ${d.address_line2}` : ''}, {d.city}, {d.postcode}, {d.country || 'United Kingdom'} · {d.region}
+            </p>
+          </div>
+          <button className="secondary" onClick={() => removeDepot(d.id)} style={{ fontSize: 12, padding: '6px 10px' }}>Remove</button>
+        </div>
+      ))}
+
+      <form onSubmit={addDepot} style={{ marginTop: 18, paddingTop: 14, borderTop: depots.length ? '1px solid var(--line)' : 'none' }}>
+        <label>Depot name (optional, e.g. "Bristol depot")</label>
+        <input value={newDepot.name} onChange={e => updateNew('name', e.target.value)} />
+
+        <label>Address line 1</label>
+        <input required value={newDepot.addressLine1} onChange={e => updateNew('addressLine1', e.target.value)} placeholder="e.g. Unit 4, Anywhere Trading Estate" />
+
+        <label>Address line 2 (optional)</label>
+        <input value={newDepot.addressLine2} onChange={e => updateNew('addressLine2', e.target.value)} />
+
+        <label>City / town</label>
+        <input required value={newDepot.city} onChange={e => updateNew('city', e.target.value)} />
+
+        <label>Postcode</label>
+        <input required value={newDepot.postcode} onChange={e => updateNew('postcode', e.target.value)} />
+
+        <label>Country</label>
+        <select value={newDepot.country} onChange={e => setNewDepot(d => ({ ...d, country: e.target.value, region: '' }))}>
+          {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+
+        <label>Region</label>
+        <select required value={newDepot.region} onChange={e => updateNew('region', e.target.value)}>
+          <option value="">Select a region…</option>
+          {regionsFor(newDepot.country).map(r => <option key={r} value={r}>{r}</option>)}
+        </select>
+
+        {error && <p style={{ color: 'crimson', fontSize: 13 }}>{error}</p>}
+        <button type="submit" disabled={adding}>{adding ? 'Adding…' : '+ Add depot'}</button>
+      </form>
+    </div>
+  )
+}
+
+export default function Profile() {
+  const { company, refreshCompany } = useAuth()
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
+  const [uploading, setUploading] = useState(false) // false | 'logo' | 'photo'
+
+  const [form, setForm] = useState({
+    companyName: '', region: [], yearsTrading: '',
+    fleetSize: '', staffCount: '', memberships: '',
+    hasWarehouse: false, warehouseSqft: '', contactEmail: '', logoUrl: '', photoUrl: '',
+    notifyStaff: true, notifyVehicle: true,
+    addressLine1: '', addressLine2: '', city: '', postcode: '', country: 'United Kingdom',
+  })
+
+  useEffect(() => {
+    if (company) {
+      setForm({
+        companyName: company.name || '',
+        region: company.region || [],
+        yearsTrading: company.years_trading ?? '',
+        fleetSize: company.fleet_size ?? '',
+        staffCount: company.staff_count ?? '',
+        memberships: (company.memberships || []).join(', '),
+        hasWarehouse: !!company.warehouse_sqft,
+        warehouseSqft: company.warehouse_sqft ?? '',
+        contactEmail: company.contact_email || '',
+        logoUrl: company.logo_url || '',
+        photoUrl: company.photo_url || '',
+        notifyStaff: (company.notify_types || ['staff', 'vehicle']).includes('staff'),
+        notifyVehicle: (company.notify_types || ['staff', 'vehicle']).includes('vehicle'),
+        addressLine1: company.address_line1 || '',
+        addressLine2: company.address_line2 || '',
+        city: company.city || '',
+        postcode: company.postcode || '',
+        country: company.country || 'United Kingdom',
+      })
+    }
+  }, [company])
 
   function update(field, value) {
     setForm(f => ({ ...f, [field]: value }))
+    setSaved(false)
   }
 
-  async function notifyMatchingCompanies(listing) {
-    // Find companies covering this region, interested in this listing type,
-    // who aren't the poster themselves and have a contact email on file.
-    const { data: matches } = await supabase
-      .from('companies')
-      .select('contact_email, notify_types, region')
-      .neq('id', company.id)
-      .not('contact_email', 'is', null)
+  function toggleRegion(r) {
+    setForm(f => ({
+      ...f,
+      region: f.region.includes(r) ? f.region.filter(x => x !== r) : [...f.region, r]
+    }))
+    setSaved(false)
+  }
 
-    const interested = (matches || []).filter(c =>
-      (c.region || []).includes(listing.region) &&
-      (c.notify_types || ['staff', 'vehicle']).includes(listing.type)
-    )
+  async function handleImageUpload(e, kind) {
+    // kind is 'logo' or 'photo'
+    const file = e.target.files?.[0]
+    if (!file || !company) return
 
-    for (const c of interested) {
-      try {
-        await fetch('/api/notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: c.contact_email,
-            subject: `New ${listing.type} listing in ${listing.region}, ${listing.country} — Mover-Exchange`,
-            message: `${company.name} just posted a ${listing.direction === 'request' ? 'request for' : 'offer of'} ${listing.type} in ${listing.region}, ${listing.country} (${listing.location}). Log in to Mover-Exchange to view and respond.`,
-          }),
-        })
-      } catch (err) {
-        console.error('Notification failed for', c.contact_email, err)
-      }
+    setUploading(kind)
+    setError('')
+
+    const ext = file.name.split('.').pop()
+    const path = `${company.id}/${kind}.${ext}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('company-logos')
+      .upload(path, file, { upsert: true, cacheControl: '3600' })
+
+    if (uploadError) {
+      setUploading(false)
+      setError(uploadError.message)
+      return
     }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('company-logos')
+      .getPublicUrl(path)
+
+    // Cache-bust so the new image shows immediately instead of a stale cached one
+    const freshUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`
+    const dbField = kind === 'logo' ? 'logo_url' : 'photo_url'
+
+    const { error: updateError } = await supabase
+      .from('companies')
+      .update({ [dbField]: freshUrl })
+      .eq('id', company.id)
+
+    setUploading(false)
+    if (updateError) { setError(updateError.message); return }
+
+    update(kind === 'logo' ? 'logoUrl' : 'photoUrl', freshUrl)
+    refreshCompany()
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
-    if (!company) { setError('You need a company profile to post a listing.'); return }
     setSaving(true)
 
-    const detail = form.type === 'staff'
-      ? { staff_needed: parseInt(form.staff_needed) || 1 }
-      : { vehicle_type: form.vehicle_type, with_driver: form.with_driver }
-
-    const { data: inserted, error } = await supabase.from('listings').insert({
-      company_id: company.id,
-      type: form.type,
-      direction: form.direction,
-      date_from: form.date_from,
-      date_to: form.date_to || null,
-      country: form.country,
-      region: form.region,
-      location: `${form.town}${form.postcode ? ', ' + form.postcode : ''}`,
-      rate: form.rate ? parseFloat(form.rate) : null,
-      detail,
-    }).select().single()
+    const { error } = await supabase
+      .from('companies')
+      .update({
+        name: form.companyName,
+        region: form.region,
+        years_trading: parseInt(form.yearsTrading) || null,
+        fleet_size: parseInt(form.fleetSize) || 0,
+        staff_count: parseInt(form.staffCount) || 0,
+        memberships: form.memberships ? form.memberships.split(',').map(s => s.trim()).filter(Boolean) : [],
+        warehouse_sqft: form.hasWarehouse ? (parseInt(form.warehouseSqft) || null) : null,
+        contact_email: form.contactEmail,
+        notify_types: [
+          ...(form.notifyStaff ? ['staff'] : []),
+          ...(form.notifyVehicle ? ['vehicle'] : []),
+        ],
+        address_line1: form.addressLine1,
+        address_line2: form.addressLine2 || null,
+        city: form.city,
+        postcode: form.postcode,
+        country: form.country,
+      })
+      .eq('id', company.id)
 
     setSaving(false)
     if (error) { setError(error.message); return }
 
-    setShowForm(false)
-    setForm({ type: 'staff', direction: 'request', date_from: '', date_to: '', country: 'United Kingdom', region: '', town: '', postcode: '', rate: '', staff_needed: '', vehicle_type: '', with_driver: false })
-    loadListings()
-
-    if (inserted) notifyMatchingCompanies(inserted)
+    setSaved(true)
+    refreshCompany()
   }
 
-  async function respond(listing) {
-    if (!company) return
-    const message = prompt('Message to the poster (optional):') || ''
-    const { error } = await supabase.from('listing_responses').insert({
-      listing_id: listing.id,
-      responding_company_id: company.id,
-      message,
-    })
-    if (error) { alert(error.message); return }
-
-    alert('Response sent — the poster will be in touch if they accept.')
-
-    const posterEmail = listing.companies?.contact_email
-    if (posterEmail) {
-      try {
-        await fetch('/api/notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: posterEmail,
-            subject: 'New response to your listing — Mover-Exchange',
-            message: `${company.name} responded to your listing on Mover-Exchange. Log in to your "My Listings" page to view it and accept or decline.`,
-          }),
-        })
-      } catch (err) {
-        console.error('Notification failed to send:', err)
-      }
-    }
+  if (!company) {
+    return <div className="container"><p>Loading your profile…</p></div>
   }
 
   return (
-    <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>Listings</h1>
-        <button onClick={() => setShowForm(s => !s)}>{showForm ? 'Cancel' : '+ Post a listing'}</button>
-      </div>
+    <div className="container" style={{ maxWidth: 520 }}>
+      <h1>Edit profile</h1>
+      <p style={{ color: 'var(--slate)' }}>These details show up on your trading card for other members to see.</p>
 
-      {showForm && (
-        <form onSubmit={handleSubmit} className="card">
-          <label>What's this for?</label>
-          <select value={form.type} onChange={e => update('type', e.target.value)}>
-            <option value="staff">Staff</option>
-            <option value="vehicle">Vehicle</option>
-          </select>
-
-          <label>Direction</label>
-          <select value={form.direction} onChange={e => update('direction', e.target.value)}>
-            <option value="request">I need this (request)</option>
-            <option value="offer">I have spare capacity (offer)</option>
-          </select>
-
-          <label>Date from</label>
-          <input required type="date" value={form.date_from} onChange={e => update('date_from', e.target.value)} />
-          <label>Date to (optional, for multi-day)</label>
-          <input type="date" value={form.date_to} onChange={e => update('date_to', e.target.value)} />
-
-          <label>Country</label>
-          <select value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value, region: '' }))}>
-            {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <p style={{ fontSize: 12.5, color: 'var(--slate)', marginTop: -6, marginBottom: 12 }}>
-            Not always your own country — e.g. pick France if the job needs help there.
-          </p>
-
-          <label>Region</label>
-          <select required value={form.region} onChange={e => update('region', e.target.value)}>
-            <option value="">Select a region…</option>
-            {regionsFor(form.country).map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
-
-          <label>Town / city</label>
-          <input required placeholder="e.g. Bristol" value={form.town} onChange={e => update('town', e.target.value)} />
-
-          <label>Postcode</label>
-          <input required placeholder="e.g. BS1 1AA" value={form.postcode} onChange={e => update('postcode', e.target.value)} />
-
-          {form.type === 'staff' ? (
-            <>
-              <label>Staff needed</label>
-              <input type="number" min="1" value={form.staff_needed} onChange={e => update('staff_needed', e.target.value)} />
-            </>
-          ) : (
-            <>
-              <label>Vehicle type</label>
-              <input placeholder="e.g. Luton, 7.5t" value={form.vehicle_type} onChange={e => update('vehicle_type', e.target.value)} />
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input type="checkbox" style={{ width: 'auto' }} checked={form.with_driver} onChange={e => update('with_driver', e.target.checked)} />
-                With driver
-              </label>
-            </>
-          )}
-
-          <label>Rate (£/day, optional)</label>
-          <input type="number" min="0" value={form.rate} onChange={e => update('rate', e.target.value)} />
-
-          {error && <p style={{ color: 'crimson' }}>{error}</p>}
-          <button type="submit" disabled={saving}>{saving ? 'Posting…' : 'Post listing'}</button>
-        </form>
-      )}
-
-      {loading && <p>Loading…</p>}
-      {!loading && listings.length === 0 && (
-        <div className="empty-state">No open listings right now. Be the first to post one.</div>
-      )}
-
-      {listings.map(l => (
-        <div key={l.id} className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <div>
-              <strong>{l.companies?.name}</strong>
-              {l.companies?.verified && <span className="badge verified" style={{ marginLeft: 6 }}>✓</span>}
-            </div>
-            <span className="status-pill open">{l.direction === 'request' ? 'Needs help' : 'Spare capacity'}</span>
+      <form onSubmit={handleSubmit} className="card">
+        <label>Company logo (shown top-left on your card)</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+          <div style={{
+            width: 72, height: 72, borderRadius: 10, background: 'var(--ice-tint)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+            border: '1px solid var(--line)', flexShrink: 0,
+          }}>
+            {form.logoUrl
+              ? <img src={form.logoUrl} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              : <span style={{ fontSize: 11, color: 'var(--slate)', textAlign: 'center' }}>No logo</span>}
           </div>
-          <p style={{ margin: '8px 0', fontSize: 14 }}>
-            <strong>{l.type === 'staff' ? `${l.detail?.staff_needed || 1} staff` : `${l.detail?.vehicle_type || 'Vehicle'}${l.detail?.with_driver ? ' (with driver)' : ''}`}</strong>
-            {' · '}{flagFor(l.country)} {l.region}{l.location ? `, ${l.location}` : ''}{' · '}{l.date_from}{l.date_to ? ` to ${l.date_to}` : ''}
-            {l.rate ? ` · £${l.rate}/day` : ''}
-          </p>
-          {company && l.company_id !== company.id && (
-            <button onClick={() => respond(l)}>Respond</button>
-          )}
+          <div>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={e => handleImageUpload(e, 'logo')}
+              disabled={!!uploading}
+              style={{ marginBottom: 0 }}
+            />
+            {uploading === 'logo' && <p style={{ fontSize: 12, color: 'var(--slate)', margin: '4px 0 0' }}>Uploading…</p>}
+          </div>
         </div>
-      ))}
+
+        <label>Company photo (main image on your card, e.g. your fleet)</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+          <div style={{
+            width: 110, height: 72, borderRadius: 10, background: 'var(--ice-tint)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+            border: '1px solid var(--line)', flexShrink: 0,
+          }}>
+            {form.photoUrl
+              ? <img src={form.photoUrl} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <span style={{ fontSize: 11, color: 'var(--slate)', textAlign: 'center' }}>No photo</span>}
+          </div>
+          <div>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={e => handleImageUpload(e, 'photo')}
+              disabled={!!uploading}
+              style={{ marginBottom: 0 }}
+            />
+            {uploading === 'photo' && <p style={{ fontSize: 12, color: 'var(--slate)', margin: '4px 0 0' }}>Uploading…</p>}
+          </div>
+        </div>
+
+        <label>Company name</label>
+        <input required value={form.companyName} onChange={e => update('companyName', e.target.value)} />
+
+        <label>Full address (HQ)</label>
+        <input value={form.addressLine1} onChange={e => update('addressLine1', e.target.value)} placeholder="Address line 1" />
+        <input value={form.addressLine2} onChange={e => update('addressLine2', e.target.value)} placeholder="Address line 2 (optional)" />
+        <input value={form.city} onChange={e => update('city', e.target.value)} placeholder="City / town" />
+        <input value={form.postcode} onChange={e => update('postcode', e.target.value)} placeholder="Postcode" />
+        <select value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value, region: [] }))}>
+          {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+
+        <label>Regions covered</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+          {regionsFor(form.country).map(r => (
+            <span
+              key={r}
+              onClick={() => toggleRegion(r)}
+              className="badge"
+              style={{
+                cursor: 'pointer',
+                background: form.region.includes(r) ? 'var(--sky)' : 'var(--ice-tint)',
+                color: form.region.includes(r) ? 'white' : 'var(--navy)',
+              }}
+            >
+              {r}
+            </span>
+          ))}
+        </div>
+
+        <label>Years trading</label>
+        <input type="number" min="0" value={form.yearsTrading} onChange={e => update('yearsTrading', e.target.value)} />
+
+        <label>Fleet size (number of vehicles)</label>
+        <input type="number" min="0" value={form.fleetSize} onChange={e => update('fleetSize', e.target.value)} />
+
+        <label>Staff count</label>
+        <input type="number" min="0" value={form.staffCount} onChange={e => update('staffCount', e.target.value)} />
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <input
+            type="checkbox"
+            style={{ width: 'auto' }}
+            checked={form.hasWarehouse}
+            onChange={e => update('hasWarehouse', e.target.checked)}
+          />
+          We have warehouse or storage space
+        </label>
+
+        {form.hasWarehouse && (
+          <>
+            <label>Warehouse size (sq ft)</label>
+            <input type="number" min="0" value={form.warehouseSqft} onChange={e => update('warehouseSqft', e.target.value)} />
+          </>
+        )}
+
+        <label>Memberships (comma separated, e.g. BAR, RHA)</label>
+        <input value={form.memberships} onChange={e => update('memberships', e.target.value)} />
+
+        <label>Contact email</label>
+        <input type="email" value={form.contactEmail} onChange={e => update('contactEmail', e.target.value)} />
+
+        <label>Email me about new listings for:</label>
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 400, marginBottom: 6 }}>
+            <input type="checkbox" style={{ width: 'auto' }} checked={form.notifyStaff} onChange={e => update('notifyStaff', e.target.checked)} />
+            Staff requests/offers
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 400 }}>
+            <input type="checkbox" style={{ width: 'auto' }} checked={form.notifyVehicle} onChange={e => update('notifyVehicle', e.target.checked)} />
+            Vehicle requests/offers
+          </label>
+        </div>
+
+        {error && <p style={{ color: 'crimson' }}>{error}</p>}
+        {saved && <p style={{ color: 'var(--ok)' }}>Saved.</p>}
+
+        <button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button>
+      </form>
+
+      <DepotsSection company={company} />
     </div>
   )
 }
