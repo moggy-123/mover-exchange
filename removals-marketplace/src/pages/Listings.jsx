@@ -28,7 +28,7 @@ function regionsFor(country) {
 
 const COUNTRY_FLAGS = {
   'United Kingdom': '🇬🇧', 'Ireland': '🇮🇪', 'France': '🇫🇷', 'Germany': '🇩🇪', 'Spain': '🇪🇸',
-  'Italy': '🇮🇹', 'Netherlands': '🇳🇱', 'Belgium': '🇧🇪', 'Portugal': '🇵🇹', 'Poland': '🇵🇱',
+  'Italy': '🇮🇹', 'Netherlands': '🇳🇱', 'Belgium': '🇧🇪', 'Portugal': '🇵', 'Poland': '🇵🇱',
   'Switzerland': '🇨🇭', 'Austria': '🇦🇹', 'Denmark': '🇩🇰', 'Sweden': '🇸🇪', 'Norway': '🇳🇴',
 }
 
@@ -39,6 +39,7 @@ function flagFor(country) {
 export default function Listings() {
   const { company } = useAuth()
   const [listings, setListings] = useState([])
+  const [respondedIds, setRespondedIds] = useState(new Set())
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -57,10 +58,19 @@ export default function Listings() {
       .eq('status', 'open')
       .order('date_from', { ascending: true })
     setListings(data || [])
+
+    if (company) {
+      const { data: myResponses } = await supabase
+        .from('listing_responses')
+        .select('listing_id')
+        .eq('responding_company_id', company.id)
+      setRespondedIds(new Set((myResponses || []).map(r => r.listing_id)))
+    }
+
     setLoading(false)
   }
 
-  useEffect(() => { loadListings() }, [])
+  useEffect(() => { loadListings() }, [company])
 
   function update(field, value) {
     setForm(f => ({ ...f, [field]: value }))
@@ -138,6 +148,7 @@ export default function Listings() {
     })
     if (error) { alert(error.message); return }
 
+    setRespondedIds(prev => new Set(prev).add(listing.id))
     alert('Response sent — the poster will be in touch if they accept.')
 
     const posterEmail = listing.companies?.contact_email
@@ -248,7 +259,9 @@ export default function Listings() {
             {l.rate ? ` · £${l.rate}/day` : ''}
           </p>
           {company && l.company_id !== company.id && (
-            <button onClick={() => respond(l)}>Respond</button>
+            respondedIds.has(l.id)
+              ? <span className="status-pill matched">✓ Replied</span>
+              : <button onClick={() => respond(l)}>Respond</button>
           )}
         </div>
       ))}
