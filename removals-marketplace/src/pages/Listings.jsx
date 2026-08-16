@@ -28,7 +28,7 @@ function regionsFor(country) {
 
 const COUNTRY_FLAGS = {
   'United Kingdom': '🇬🇧', 'Ireland': '🇮🇪', 'France': '🇫🇷', 'Germany': '🇩🇪', 'Spain': '🇪🇸',
-  'Italy': '🇮🇹', 'Netherlands': '🇳🇱', 'Belgium': '🇧🇪', 'Portugal': '🇵🇹', 'Poland': '🇵🇱',
+  'Italy': '🇮🇹', 'Netherlands': '🇳🇱', 'Belgium': '🇧', 'Portugal': '🇵🇹', 'Poland': '🇵🇱',
   'Switzerland': '🇨🇭', 'Austria': '🇦🇹', 'Denmark': '🇩🇰', 'Sweden': '🇸🇪', 'Norway': '🇳🇴',
 }
 
@@ -237,10 +237,15 @@ export default function Listings() {
             </>
           )}
 
-          <label>Date from</label>
+          <label>{isPaidType ? 'Date listed' : 'Date from'}</label>
           <input required type="date" value={form.date_from} onChange={e => update('date_from', e.target.value)} />
-          <label>Date to (optional, for multi-day)</label>
-          <input type="date" value={form.date_to} onChange={e => update('date_to', e.target.value)} />
+
+          {!isPaidType && (
+            <>
+              <label>Date to (optional, for multi-day)</label>
+              <input type="date" value={form.date_to} onChange={e => update('date_to', e.target.value)} />
+            </>
+          )}
 
           <label>Country</label>
           <select value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value, region: '' }))}>
@@ -311,8 +316,12 @@ export default function Listings() {
             </>
           )}
 
-          <label>Rate (£/day, optional)</label>
-          <input type="number" min="0" value={form.rate} onChange={e => update('rate', e.target.value)} />
+          {!isPaidType && (
+            <>
+              <label>Rate (£/day, optional)</label>
+              <input type="number" min="0" value={form.rate} onChange={e => update('rate', e.target.value)} />
+            </>
+          )}
 
           {error && <p style={{ color: 'crimson' }}>{error}</p>}
           <button type="submit" disabled={saving || (isPaidType && !canPostPaidType)}>{saving ? 'Posting…' : 'Post listing'}</button>
