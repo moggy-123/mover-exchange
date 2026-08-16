@@ -28,7 +28,7 @@ function regionsFor(country) {
 
 const COUNTRY_FLAGS = {
   'United Kingdom': '🇬🇧', 'Ireland': '🇮🇪', 'France': '🇫🇷', 'Germany': '🇩🇪', 'Spain': '🇪🇸',
-  'Italy': '🇮🇹', 'Netherlands': '🇳🇱', 'Belgium': '🇧🇪', 'Portugal': '🇵', 'Poland': '🇵🇱',
+  'Italy': '🇮🇹', 'Netherlands': '🇳🇱', 'Belgium': '🇧🇪', 'Portugal': '🇵🇹', 'Poland': '🇵🇱',
   'Switzerland': '🇨🇭', 'Austria': '🇦🇹', 'Denmark': '🇩🇰', 'Sweden': '🇸🇪', 'Norway': '🇳🇴',
 }
 
@@ -244,7 +244,16 @@ export default function Listings() {
         <div className="empty-state">No open listings right now. Be the first to post one.</div>
       )}
 
-      {listings.map(l => (
+      {(() => {
+        const visibleListings = company
+          ? listings.filter(l => l.company_id === company.id || (company.region || []).includes(l.region))
+          : listings
+
+        if (!loading && listings.length > 0 && visibleListings.length === 0) {
+          return <div className="empty-state">No open listings in your covered regions right now. Check your Profile to make sure your regions are set correctly.</div>
+        }
+
+        return visibleListings.map(l => (
         <div key={l.id} className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <div>
@@ -264,7 +273,8 @@ export default function Listings() {
               : <button onClick={() => respond(l)}>Respond</button>
           )}
         </div>
-      ))}
+      ))
+      })()}
     </div>
   )
 }
