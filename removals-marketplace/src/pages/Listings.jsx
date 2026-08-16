@@ -14,4 +14,347 @@ const REGIONS_BY_COUNTRY = {
   'Netherlands': ['North Holland', 'South Holland', 'Utrecht', 'North Brabant', 'Gelderland', 'Overijssel'],
   'Belgium': ['Flanders', 'Wallonia', 'Brussels-Capital'],
   'Portugal': ['Lisbon', 'Porto', 'Algarve', 'Centro', 'Norte'],
-  'Poland': ['Masovian', 'Silesian', 'Lesser Poland', 'Greater Poland', 'Lower Silesian', 'Pomeran
+  'Poland': ['Masovian', 'Silesian', 'Lesser Poland', 'Greater Poland', 'Lower Silesian', 'Pomeranian'],
+  'Switzerland': ['Zurich', 'Geneva', 'Bern', 'Basel', 'Vaud', 'Ticino'],
+  'Austria': ['Vienna', 'Lower Austria', 'Upper Austria', 'Styria', 'Tyrol'],
+  'Denmark': ['Capital Region', 'Central Denmark', 'Southern Denmark', 'Zealand', 'North Denmark'],
+  'Sweden': ['Stockholm', 'Västra Götaland', 'Skåne', 'Uppsala'],
+  'Norway': ['Oslo', 'Viken', 'Vestland', 'Rogaland', 'Trøndelag'],
+}
+
+function regionsFor(country) {
+  return REGIONS_BY_COUNTRY[country] || REGIONS_BY_COUNTRY['United Kingdom']
+}
+
+const COUNTRY_FLAGS = {
+  'United Kingdom': '🇬🇧', 'Ireland': '🇮🇪', 'France': '🇫🇷', 'Germany': '🇩🇪', 'Spain': '🇪🇸',
+  'Italy': '🇮🇹', 'Netherlands': '🇳🇱', 'Belgium': '🇧🇪', 'Portugal': '🇵🇹', 'Poland': '🇵🇱',
+  'Switzerland': '🇨🇭', 'Austria': '🇦🇹', 'Denmark': '🇩🇰', 'Sweden': '🇸🇪', 'Norway': '🇳🇴',
+}
+
+function flagFor(country) {
+  return COUNTRY_FLAGS[country] || '🌍'
+}
+
+const PAID_TYPES = ['vehicle_sale', 'storage', 'business_sale']
+
+const TYPE_LABELS = {
+  staff: 'Staff (share)',
+  vehicle: 'Vehicle (share)',
+  vehicle_sale: 'Vehicle for sale 🔒',
+  storage: 'Storage space 🔒',
+  business_sale: 'Business for sale 🔒',
+}
+
+function summaryFor(l) {
+  if (l.type === 'staff') return `${l.detail?.staff_needed || 1} staff`
+  if (l.type === 'vehicle') return `${l.detail?.vehicle_type || 'Vehicle'}${l.detail?.with_driver ? ' (with driver)' : ''}`
+  if (l.type === 'vehicle_sale') return `${l.detail?.vehicle_type || 'Vehicle'} for sale${l.detail?.year ? `, ${l.detail.year}` : ''}${l.detail?.price ? ` — £${l.detail.price}` : ''}`
+  if (l.type === 'storage') return `${l.detail?.sqft_available ? `${l.detail.sqft_available} sqft storage` : 'Storage space'}${l.detail?.price_per_month ? ` — £${l.detail.price_per_month}/month` : ''}`
+  if (l.type === 'business_sale') return `Business for sale${l.detail?.asking_price ? ` — £${l.detail.asking_price}` : ''}`
+  return l.type
+}
+
+export default function Listings() {
+  const { company } = useAuth()
+  const [listings, setListings] = useState([])
+  const [respondedIds, setRespondedIds] = useState(new Set())
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const [form, setForm] = useState({
+    type: 'staff', direction: 'request', date_from: '', date_to: '',
+    country: 'United Kingdom', region: '', town: '', postcode: '', rate: '', staff_needed: '', vehicle_type: '', with_driver: false,
+    price: '', year: '', mileage: '', sqft_available: '', price_per_month: '', description: '',
+  })
+
+  const isPaidType = PAID_TYPES.includes(form.type)
+  const companyTier = company?.tier || 'free'
+  const canPostPaidType = companyTier !== 'free'
+
+  async function loadListings() {
+    setLoading(true)
+    const { data } = await supabase
+      .from('listings')
+      .select('*, companies(name, region, verified, rating_avg, rating_count, contact_email)')
+      .eq('status', 'open')
+      .order('date_from', { ascending: true })
+    setListings(data || [])
+
+    if (company) {
+      const { data: myResponses } = await supabase
+        .from('listing_responses')
+        .select('listing_id')
+        .eq('responding_company_id', company.id)
+      setRespondedIds(new Set((myResponses || []).map(r => r.listing_id)))
+    }
+
+    setLoading(false)
+  }
+
+  useEffect(() => { loadListings() }, [company])
+
+  function update(field, value) {
+    setForm(f => ({ ...f, [field]: value }))
+  }
+
+  async function notifyMatchingCompanies(listing) {
+    const { data: matches } = await supabase
+      .from('companies')
+      .select('contact_email, notify_types, region')
+      .neq('id', company.id)
+      .not('contact_email', 'is', null)
+
+    const interested = (matches || []).filter(c =>
+      (c.region || []).includes(listing.region) &&
+      (c.notify_types || ['staff', 'vehicle']).includes(listing.type)
+    )
+
+    for (const c of interested) {
+      try {
+        await fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: c.contact_email,
+            subject: `New ${listing.type} listing in ${listing.region}, ${listing.country} — Mover-Exchange`,
+            message: `${company.name} just posted a ${listing.direction === 'request' ? 'request for' : 'offer of'} ${listing.type} in ${listing.region}, ${listing.country} (${listing.location}). Log in to Mover-Exchange to view and respond.`,
+          }),
+        })
+      } catch (err) {
+        console.error('Notification failed for', c.contact_email, err)
+      }
+    }
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError('')
+    if (!company) { setError('You need a company profile to post a listing.'); return }
+    if (isPaidType && !canPostPaidType) {
+      setError('This listing type needs a paid membership tier. Contact us to upgrade.')
+      return
+    }
+    setSaving(true)
+
+    let detail = {}
+    if (form.type === 'staff') detail = { staff_needed: parseInt(form.staff_needed) || 1 }
+    else if (form.type === 'vehicle') detail = { vehicle_type: form.vehicle_type, with_driver: form.with_driver }
+    else if (form.type === 'vehicle_sale') detail = { vehicle_type: form.vehicle_type, year: form.year, mileage: form.mileage, price: form.price }
+    else if (form.type === 'storage') detail = { sqft_available: form.sqft_available, price_per_month: form.price_per_month }
+    else if (form.type === 'business_sale') detail = { asking_price: form.price, description: form.description }
+
+    const direction = PAID_TYPES.includes(form.type) ? 'offer' : form.direction
+
+    const { data: inserted, error } = await supabase.from('listings').insert({
+      company_id: company.id,
+      type: form.type,
+      direction,
+      date_from: form.date_from,
+      date_to: form.date_to || null,
+      country: form.country,
+      region: form.region,
+      location: `${form.town}${form.postcode ? ', ' + form.postcode : ''}`,
+      rate: form.rate ? parseFloat(form.rate) : null,
+      detail,
+    }).select().single()
+
+    setSaving(false)
+    if (error) { setError(error.message); return }
+
+    setShowForm(false)
+    setForm({
+      type: 'staff', direction: 'request', date_from: '', date_to: '', country: 'United Kingdom', region: '', town: '', postcode: '',
+      rate: '', staff_needed: '', vehicle_type: '', with_driver: false, price: '', year: '', mileage: '', sqft_available: '', price_per_month: '', description: '',
+    })
+    loadListings()
+
+    if (inserted) notifyMatchingCompanies(inserted)
+  }
+
+  async function respond(listing) {
+    if (!company) return
+    const message = prompt('Message to the poster (optional):') || ''
+    const { error } = await supabase.from('listing_responses').insert({
+      listing_id: listing.id,
+      responding_company_id: company.id,
+      message,
+    })
+    if (error) { alert(error.message); return }
+
+    setRespondedIds(prev => new Set(prev).add(listing.id))
+    alert('Response sent — the poster will be in touch if they accept.')
+
+    const posterEmail = listing.companies?.contact_email
+    if (posterEmail) {
+      try {
+        await fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: posterEmail,
+            subject: 'New response to your listing — Mover-Exchange',
+            message: `${company.name} responded to your listing on Mover-Exchange:\n\n"${message || '(no message included)'}"\n\nLog in to your "My Listings" page to accept or decline.`,
+          }),
+        })
+      } catch (err) {
+        console.error('Notification failed to send:', err)
+      }
+    }
+  }
+
+  return (
+    <div className="container">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1>Listings</h1>
+        <button onClick={() => setShowForm(s => !s)}>{showForm ? 'Cancel' : '+ Post a listing'}</button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} className="card">
+          <label>What's this for?</label>
+          <select value={form.type} onChange={e => update('type', e.target.value)}>
+            {Object.entries(TYPE_LABELS).map(([val, label]) => (
+              <option key={val} value={val}>{label}</option>
+            ))}
+          </select>
+
+          {isPaidType && !canPostPaidType && (
+            <p style={{ background: 'var(--ice-tint)', color: 'var(--navy)', padding: '10px 12px', borderRadius: 8, fontSize: 13.5, marginTop: -4, marginBottom: 12 }}>
+              🔒 This listing type needs a paid membership. Contact us to upgrade your account.
+            </p>
+          )}
+
+          {!isPaidType && (
+            <>
+              <label>Direction</label>
+              <select value={form.direction} onChange={e => update('direction', e.target.value)}>
+                <option value="request">I need this (request)</option>
+                <option value="offer">I have spare capacity (offer)</option>
+              </select>
+            </>
+          )}
+
+          <label>Date from</label>
+          <input required type="date" value={form.date_from} onChange={e => update('date_from', e.target.value)} />
+          <label>Date to (optional, for multi-day)</label>
+          <input type="date" value={form.date_to} onChange={e => update('date_to', e.target.value)} />
+
+          <label>Country</label>
+          <select value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value, region: '' }))}>
+            {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <p style={{ fontSize: 12.5, color: 'var(--slate)', marginTop: -6, marginBottom: 12 }}>
+            Not always your own country — e.g. pick France if the job needs help there.
+          </p>
+
+          <label>Region</label>
+          <select required value={form.region} onChange={e => update('region', e.target.value)}>
+            <option value="">Select a region…</option>
+            {regionsFor(form.country).map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+
+          <label>Town / city</label>
+          <input required placeholder="e.g. Bristol" value={form.town} onChange={e => update('town', e.target.value)} />
+
+          <label>Postcode</label>
+          <input required placeholder="e.g. BS1 1AA" value={form.postcode} onChange={e => update('postcode', e.target.value)} />
+
+          {form.type === 'staff' && (
+            <>
+              <label>Staff needed</label>
+              <input type="number" min="1" value={form.staff_needed} onChange={e => update('staff_needed', e.target.value)} />
+            </>
+          )}
+
+          {form.type === 'vehicle' && (
+            <>
+              <label>Vehicle type</label>
+              <input placeholder="e.g. Luton, 7.5t" value={form.vehicle_type} onChange={e => update('vehicle_type', e.target.value)} />
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input type="checkbox" style={{ width: 'auto' }} checked={form.with_driver} onChange={e => update('with_driver', e.target.checked)} />
+                With driver
+              </label>
+            </>
+          )}
+
+          {form.type === 'vehicle_sale' && (
+            <>
+              <label>Vehicle type</label>
+              <input placeholder="e.g. Mercedes Sprinter Luton" value={form.vehicle_type} onChange={e => update('vehicle_type', e.target.value)} />
+              <label>Year</label>
+              <input placeholder="e.g. 2019" value={form.year} onChange={e => update('year', e.target.value)} />
+              <label>Mileage</label>
+              <input placeholder="e.g. 62,000" value={form.mileage} onChange={e => update('mileage', e.target.value)} />
+              <label>Price (£)</label>
+              <input type="number" min="0" value={form.price} onChange={e => update('price', e.target.value)} />
+            </>
+          )}
+
+          {form.type === 'storage' && (
+            <>
+              <label>Storage available (sq ft)</label>
+              <input type="number" min="0" value={form.sqft_available} onChange={e => update('sqft_available', e.target.value)} />
+              <label>Price per month (£)</label>
+              <input type="number" min="0" value={form.price_per_month} onChange={e => update('price_per_month', e.target.value)} />
+            </>
+          )}
+
+          {form.type === 'business_sale' && (
+            <>
+              <label>Asking price (£)</label>
+              <input type="number" min="0" value={form.price} onChange={e => update('price', e.target.value)} />
+              <label>Description</label>
+              <textarea rows={4} value={form.description} onChange={e => update('description', e.target.value)} placeholder="Brief overview — fleet, staff, turnover, reason for sale, etc." />
+            </>
+          )}
+
+          <label>Rate (£/day, optional)</label>
+          <input type="number" min="0" value={form.rate} onChange={e => update('rate', e.target.value)} />
+
+          {error && <p style={{ color: 'crimson' }}>{error}</p>}
+          <button type="submit" disabled={saving || (isPaidType && !canPostPaidType)}>{saving ? 'Posting…' : 'Post listing'}</button>
+        </form>
+      )}
+
+      {loading && <p>Loading…</p>}
+      {!loading && listings.length === 0 && (
+        <div className="empty-state">No open listings right now. Be the first to post one.</div>
+      )}
+
+      {(() => {
+        const visibleListings = company
+          ? listings.filter(l => l.company_id === company.id || (company.region || []).includes(l.region))
+          : listings
+
+        if (!loading && listings.length > 0 && visibleListings.length === 0) {
+          return <div className="empty-state">No open listings in your covered regions right now. Check your Profile to make sure your regions are set correctly.</div>
+        }
+
+        return visibleListings.map(l => (
+        <div key={l.id} className="card">
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <div>
+              <strong>{l.companies?.name}</strong>
+              {l.companies?.verified && <span className="badge verified" style={{ marginLeft: 6 }}>✓</span>}
+            </div>
+            <span className="status-pill open">{l.direction === 'request' ? 'Needs help' : (PAID_TYPES.includes(l.type) ? 'For sale/rent' : 'Spare capacity')}</span>
+          </div>
+          <p style={{ margin: '8px 0', fontSize: 14 }}>
+            <strong>{summaryFor(l)}</strong>
+            {' · '}{flagFor(l.country)} {l.region}{l.location ? `, ${l.location}` : ''}{' · '}{l.date_from}{l.date_to ? ` to ${l.date_to}` : ''}
+            {l.rate ? ` · £${l.rate}/day` : ''}
+          </p>
+          {company && l.company_id !== company.id && (
+            respondedIds.has(l.id)
+              ? <span className="status-pill matched">✓ Replied</span>
+              : <button onClick={() => respond(l)}>Respond</button>
+          )}
+        </div>
+      ))
+      })()}
+    </div>
+  )
+}
