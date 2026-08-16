@@ -67,8 +67,6 @@ export default function Listings() {
   }
 
   async function notifyMatchingCompanies(listing) {
-    // Find companies covering this region, interested in this listing type,
-    // who aren't the poster themselves and have a contact email on file.
     const { data: matches } = await supabase
       .from('companies')
       .select('contact_email, notify_types, region')
@@ -151,7 +149,7 @@ export default function Listings() {
           body: JSON.stringify({
             to: posterEmail,
             subject: 'New response to your listing — Mover-Exchange',
-            message: `${company.name} responded to your listing on Mover-Exchange. Log in to your "My Listings" page to view it and accept or decline.`,
+            message: `${company.name} responded to your listing on Mover-Exchange:\n\n"${message || '(no message included)'}"\n\nLog in to your "My Listings" page to accept or decline.`,
           }),
         })
       } catch (err) {
