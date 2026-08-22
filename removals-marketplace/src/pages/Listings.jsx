@@ -28,7 +28,7 @@ function regionsFor(country) {
 
 const COUNTRY_FLAGS = {
   'United Kingdom': '🇬🇧', 'Ireland': '🇮🇪', 'France': '🇫🇷', 'Germany': '🇩🇪', 'Spain': '🇪🇸',
-  'Italy': '🇮🇹', 'Netherlands': '🇳🇱', 'Belgium': '🇧', 'Portugal': '🇵🇹', 'Poland': '🇵🇱',
+  'Italy': '🇮🇹', 'Netherlands': '🇳🇱', 'Belgium': '🇧🇪', 'Portugal': '🇵🇹', 'Poland': '🇵🇱',
   'Switzerland': '🇨🇭', 'Austria': '🇦🇹', 'Denmark': '🇩🇰', 'Sweden': '🇸🇪', 'Norway': '🇳🇴',
 }
 
@@ -100,35 +100,6 @@ export default function Listings() {
     setForm(f => ({ ...f, [field]: value }))
   }
 
-  async function notifyMatchingCompanies(listing) {
-    const { data: matches } = await supabase
-      .from('companies')
-      .select('contact_email, notify_types, region')
-      .neq('id', company.id)
-      .not('contact_email', 'is', null)
-
-    const interested = (matches || []).filter(c =>
-      (c.region || []).includes(listing.region) &&
-      (c.notify_types || ['staff', 'vehicle']).includes(listing.type)
-    )
-
-    for (const c of interested) {
-      try {
-        await fetch('/api/notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: c.contact_email,
-            subject: `New ${listing.type} listing in ${listing.region}, ${listing.country} — Mover-Exchange`,
-            message: `${company.name} just posted a ${listing.direction === 'request' ? 'request for' : 'offer of'} ${listing.type} in ${listing.region}, ${listing.country} (${listing.location}). Log in to Mover-Exchange to view and respond.`,
-          }),
-        })
-      } catch (err) {
-        console.error('Notification failed for', c.contact_email, err)
-      }
-    }
-  }
-
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
@@ -148,7 +119,10 @@ export default function Listings() {
 
     const direction = PAID_TYPES.includes(form.type) ? 'offer' : form.direction
 
-    const { data: inserted, error } = await supabase.from('listings').insert({
+    // Note: no client-side notification call here anymore — a Supabase
+    // Database Webhook now fires automatically on insert and handles
+    // emailing matching companies server-side.
+    const { error } = await supabase.from('listings').insert({
       company_id: company.id,
       type: form.type,
       direction,
@@ -159,7 +133,7 @@ export default function Listings() {
       location: `${form.town}${form.postcode ? ', ' + form.postcode : ''}`,
       rate: form.rate ? parseFloat(form.rate) : null,
       detail,
-    }).select().single()
+    })
 
     setSaving(false)
     if (error) { setError(error.message); return }
@@ -170,8 +144,6 @@ export default function Listings() {
       rate: '', staff_needed: '', vehicle_type: '', with_driver: false, price: '', year: '', mileage: '', sqft_available: '', price_per_month: '', description: '',
     })
     loadListings()
-
-    if (inserted) notifyMatchingCompanies(inserted)
   }
 
   async function respond(listing) {
@@ -258,6 +230,7 @@ export default function Listings() {
           <label>Region</label>
           <select required value={form.region} onChange={e => update('region', e.target.value)}>
             <option value="">Select a region…</option>
+            <option value="All Regions">All Regions</option>
             {regionsFor(form.country).map(r => <option key={r} value={r}>{r}</option>)}
           </select>
 
@@ -335,7 +308,7 @@ export default function Listings() {
 
       {(() => {
         const visibleListings = company
-          ? listings.filter(l => l.company_id === company.id || (company.region || []).includes(l.region))
+          ? listings.filter(l => l.company_id === company.id || l.region === 'All Regions' || (company.region || []).includes(l.region))
           : listings
 
         if (!loading && listings.length > 0 && visibleListings.length === 0) {
