@@ -28,13 +28,17 @@ function regionsFor(country) {
 
 // "All Regions" on a listing means all regions within that listing's country —
 // not literally every country. A company matches if their own country matches,
-// or any of their covered regions belongs to that country's region list.
-function matchesListingRegion(listing, company) {
+// any of their covered regions belongs to that country's region list, or any
+// of their depots is in that region/country.
+function matchesListingRegion(listing, company, depots) {
+  const myDepots = depots || []
   if (listing.region === 'All Regions') {
     return company.country === listing.country ||
-      (company.region || []).some(r => regionsFor(listing.country).includes(r))
+      (company.region || []).some(r => regionsFor(listing.country).includes(r)) ||
+      myDepots.some(d => d.country === listing.country || regionsFor(listing.country).includes(d.region))
   }
-  return (company.region || []).includes(listing.region)
+  return (company.region || []).includes(listing.region) ||
+    myDepots.some(d => d.region === listing.region)
 }
 
 const COUNTRY_FLAGS = {
@@ -70,6 +74,7 @@ export default function Listings() {
   const { company } = useAuth()
   const [listings, setListings] = useState([])
   const [respondedIds, setRespondedIds] = useState(new Set())
+  const [myDepots, setMyDepots] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -100,6 +105,12 @@ export default function Listings() {
         .select('listing_id')
         .eq('responding_company_id', company.id)
       setRespondedIds(new Set((myResponses || []).map(r => r.listing_id)))
+
+      const { data: depots } = await supabase
+        .from('depots')
+        .select('region, country')
+        .eq('company_id', company.id)
+      setMyDepots(depots || [])
     }
 
     setLoading(false)
@@ -313,7 +324,7 @@ export default function Listings() {
 
       {(() => {
         const visibleListings = company
-          ? listings.filter(l => l.company_id !== company.id && matchesListingRegion(l, company))
+          ? listings.filter(l => l.company_id !== company.id && matchesListingRegion(l, company, myDepots))
           : listings
 
         if (!loading && visibleListings.length === 0) {
