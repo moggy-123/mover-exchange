@@ -26,6 +26,17 @@ function regionsFor(country) {
   return REGIONS_BY_COUNTRY[country] || REGIONS_BY_COUNTRY['United Kingdom']
 }
 
+// "All Regions" on a listing means all regions within that listing's country —
+// not literally every country. A company matches if their own country matches,
+// or any of their covered regions belongs to that country's region list.
+function matchesListingRegion(listing, company) {
+  if (listing.region === 'All Regions') {
+    return company.country === listing.country ||
+      (company.region || []).some(r => regionsFor(listing.country).includes(r))
+  }
+  return (company.region || []).includes(listing.region)
+}
+
 const COUNTRY_FLAGS = {
   'United Kingdom': '🇬🇧', 'Ireland': '🇮🇪', 'France': '🇫🇷', 'Germany': '🇩🇪', 'Spain': '🇪🇸',
   'Italy': '🇮🇹', 'Netherlands': '🇳🇱', 'Belgium': '🇧🇪', 'Portugal': '🇵🇹', 'Poland': '🇵🇱',
@@ -302,7 +313,7 @@ export default function Listings() {
 
       {(() => {
         const visibleListings = company
-          ? listings.filter(l => l.company_id !== company.id && (l.region === 'All Regions' || (company.region || []).includes(l.region)))
+          ? listings.filter(l => l.company_id !== company.id && matchesListingRegion(l, company))
           : listings
 
         if (!loading && visibleListings.length === 0) {
