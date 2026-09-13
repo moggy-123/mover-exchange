@@ -119,9 +119,6 @@ export default function Listings() {
 
     const direction = PAID_TYPES.includes(form.type) ? 'offer' : form.direction
 
-    // Note: no client-side notification call here anymore — a Supabase
-    // Database Webhook now fires automatically on insert and handles
-    // emailing matching companies server-side.
     const { error } = await supabase.from('listings').insert({
       company_id: company.id,
       type: form.type,
@@ -302,17 +299,14 @@ export default function Listings() {
       )}
 
       {loading && <p>Loading…</p>}
-      {!loading && listings.length === 0 && (
-        <div className="empty-state">No open listings right now. Be the first to post one.</div>
-      )}
 
       {(() => {
         const visibleListings = company
-          ? listings.filter(l => l.company_id === company.id || l.region === 'All Regions' || (company.region || []).includes(l.region))
+          ? listings.filter(l => l.company_id !== company.id && (l.region === 'All Regions' || (company.region || []).includes(l.region)))
           : listings
 
-        if (!loading && listings.length > 0 && visibleListings.length === 0) {
-          return <div className="empty-state">No open listings in your covered regions right now. Check your Profile to make sure your regions are set correctly.</div>
+        if (!loading && visibleListings.length === 0) {
+          return <div className="empty-state">No open listings in your covered regions right now.</div>
         }
 
         return visibleListings.map(l => (
@@ -329,11 +323,9 @@ export default function Listings() {
             {' · '}{flagFor(l.country)} {l.region}{l.location ? `, ${l.location}` : ''}{' · '}{l.date_from}{l.date_to ? ` to ${l.date_to}` : ''}
             {l.rate ? ` · £${l.rate}/day` : ''}
           </p>
-          {company && l.company_id !== company.id && (
-            respondedIds.has(l.id)
-              ? <span className="status-pill matched">✓ Replied</span>
-              : <button onClick={() => respond(l)}>Respond</button>
-          )}
+          {respondedIds.has(l.id)
+            ? <span className="status-pill matched">✓ Replied</span>
+            : <button onClick={() => respond(l)}>Respond</button>}
         </div>
       ))
       })()}
