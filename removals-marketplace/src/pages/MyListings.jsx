@@ -1,7 +1,7 @@
-import MyOffers from '../components/MyOffers'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../lib/AuthContext'
+import MyOffers from '../components/MyOffers'
 
 const COUNTRIES = ['United Kingdom', 'Ireland', 'France', 'Germany', 'Spain', 'Italy', 'Netherlands', 'Belgium', 'Portugal', 'Poland', 'Switzerland', 'Austria', 'Denmark', 'Sweden', 'Norway']
 
@@ -312,7 +312,8 @@ export default function MyListings() {
           </div>
         </div>
       ))}
+
+      <MyOffers />
     </div>
   )
 }
-<MyOffers />
